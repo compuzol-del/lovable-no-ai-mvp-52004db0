@@ -13,6 +13,7 @@ import { Route as WalletsRouteImport } from './routes/wallets'
 import { Route as TrackerRouteImport } from './routes/tracker'
 import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as PaperRouteImport } from './routes/paper'
+import { Route as LogicRouteImport } from './routes/logic'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicHooksScanWalletsRouteImport } from './routes/api/public/hooks/scan-wallets'
 import { Route as ApiPublicHooksRefreshWhalePerformanceRouteImport } from './routes/api/public/hooks/refresh-whale-performance'
@@ -37,6 +38,11 @@ const SignalsRoute = SignalsRouteImport.update({
 const PaperRoute = PaperRouteImport.update({
   id: '/paper',
   path: '/paper',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LogicRoute = LogicRouteImport.update({
+  id: '/logic',
+  path: '/logic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +77,7 @@ const ApiPublicHooksComputeSignalsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/logic'
     | '/paper'
     | '/signals'
     | '/tracker'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/logic'
     | '/paper'
     | '/signals'
     | '/tracker'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/logic'
     | '/paper'
     | '/signals'
     | '/tracker'
@@ -141,6 +153,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LogicRoute: typeof LogicRoute
   PaperRoute: typeof PaperRoute
   SignalsRoute: typeof SignalsRoute
   TrackerRoute: typeof TrackerRoute
@@ -179,6 +192,13 @@ declare module '@tanstack/react-router' {
       path: '/paper'
       fullPath: '/paper'
       preLoaderRoute: typeof PaperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/logic': {
+      id: '/logic'
+      path: '/logic'
+      fullPath: '/logic'
+      preLoaderRoute: typeof LogicRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -221,6 +241,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LogicRoute: LogicRoute,
   PaperRoute: PaperRoute,
   SignalsRoute: SignalsRoute,
   TrackerRoute: TrackerRoute,
@@ -234,3 +255,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

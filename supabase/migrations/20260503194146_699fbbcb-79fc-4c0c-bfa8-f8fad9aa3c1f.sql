@@ -1,0 +1,1 @@
+UPDATE public.paper_bot_config SET enabled = true, updated_at = now() WHERE id = 1;

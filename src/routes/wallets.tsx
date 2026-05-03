@@ -1,10 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ExternalLink, RefreshCw } from "lucide-react";
+import { TopNav } from "@/components/TopNav";
 
 type Row = {
   address: string;
@@ -62,12 +64,8 @@ function WalletsPage() {
       ...w,
       perf: perfMap.get(w.address) || null,
     }));
-    // Show only whales that passed quality check (active + rated)
-    const passing = merged.filter(
-      (r) => r.is_active && ["S", "A", "B"].includes(r.quality_tier),
-    );
-    passing.sort((a, b) => Number(b.quality_score) - Number(a.quality_score));
-    setRows(passing);
+    merged.sort((a, b) => Number(b.quality_score) - Number(a.quality_score));
+    setRows(merged);
     setLoading(false);
   }
 
@@ -95,99 +93,116 @@ function WalletsPage() {
     return acc;
   }, {});
 
+  const [tab, setTab] = useState("passing");
+  const passing = rows.filter((r) => r.is_active && ["S", "A", "B"].includes(r.quality_tier));
+  const excluded = rows.filter((r) => r.quality_tier === "EXCLUDED");
+  const other = rows.filter((r) => !passing.includes(r) && !excluded.includes(r));
+  const visible = tab === "passing" ? passing : tab === "excluded" ? excluded : tab === "all" ? rows : other;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <TopNav />
       <div className="mx-auto max-w-6xl p-4 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-2xl font-bold">🐋 לווייתנים שעוברים סינון</h1>
+            <h1 className="text-2xl font-bold">🐋 לווייתנים</h1>
             <p className="text-sm text-muted-foreground">
-              {rows.length} לווייתנים · S:{tierCounts.S || 0} · A:{tierCounts.A || 0} · B:{tierCounts.B || 0}
+              סה"כ {rows.length} · עוברים סינון: {passing.length} · מוחרגים: {excluded.length}
+              {tierCounts.S ? ` · S:${tierCounts.S}` : ""}
+              {tierCounts.A ? ` · A:${tierCounts.A}` : ""}
+              {tierCounts.B ? ` · B:${tierCounts.B}` : ""}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button onClick={refresh} disabled={refreshing} size="sm">
-              <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
-              חישוב איכות
-            </Button>
-            <Link to="/paper">
-              <Button variant="outline" size="sm">Paper Bot</Button>
-            </Link>
-          </div>
+          <Button onClick={refresh} disabled={refreshing} size="sm">
+            <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
+            חישוב איכות
+          </Button>
         </div>
 
         {refreshMsg && <p className="text-xs text-muted-foreground">{refreshMsg}</p>}
 
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            {loading ? (
-              <p className="p-4 text-sm text-muted-foreground">טוען…</p>
-            ) : rows.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">
-                אין עדיין לווייתנים שעוברים סינון. לחץ "חישוב איכות" כדי לסרוק.
-              </p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs text-muted-foreground">
-                  <tr>
-                    <th className="text-right p-2">Tier</th>
-                    <th className="text-right p-2">Score</th>
-                    <th className="text-right p-2">Label</th>
-                    <th className="text-right p-2">סגורות</th>
-                    <th className="text-right p-2">Win%</th>
-                    <th className="text-right p-2">ROI</th>
-                    <th className="text-right p-2">PnL</th>
-                    <th className="text-right p-2">שווקים</th>
-                    <th className="text-right p-2">30d</th>
-                    <th className="text-right p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((w) => {
-                    const p = w.perf;
-                    return (
-                      <tr key={w.address} className="border-t">
-                        <td className="p-2">
-                          <Badge variant="outline" className={`text-xs ${TIER_COLORS[w.quality_tier] || ""}`}>
-                            {w.quality_tier}
-                          </Badge>
-                        </td>
-                        <td className="p-2 font-mono">{Number(w.quality_score).toFixed(1)}</td>
-                        <td className="p-2 font-medium max-w-[140px] truncate">
-                          {w.label || w.address.slice(0, 8)}
-                        </td>
-                        <td className="p-2">{p?.closed_positions ?? "—"}</td>
-                        <td className="p-2">
-                          {p?.win_rate != null ? `${(Number(p.win_rate) * 100).toFixed(0)}%` : "—"}
-                        </td>
-                        <td className="p-2">
-                          {p?.avg_roi_pct != null ? `${Number(p.avg_roi_pct).toFixed(1)}%` : "—"}
-                        </td>
-                        <td className="p-2">
-                          {p?.total_pnl_usd != null
-                            ? `$${Math.round(Number(p.total_pnl_usd)).toLocaleString()}`
-                            : "—"}
-                        </td>
-                        <td className="p-2">{p?.unique_markets ?? "—"}</td>
-                        <td className="p-2">{p?.last_30d_trades ?? "—"}</td>
-                        <td className="p-2">
-                          <a
-                            href={`https://polymarket.com/profile/${w.address}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
-                          >
-                            PM <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </td>
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="passing">עוברים ({passing.length})</TabsTrigger>
+            <TabsTrigger value="excluded">מוחרגים ({excluded.length})</TabsTrigger>
+            <TabsTrigger value="other">אחר ({other.length})</TabsTrigger>
+            <TabsTrigger value="all">הכול ({rows.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value={tab}>
+            <Card>
+              <CardContent className="p-0 overflow-x-auto">
+                {loading ? (
+                  <p className="p-4 text-sm text-muted-foreground">טוען…</p>
+                ) : visible.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">אין נתונים. לחץ "חישוב איכות".</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-xs text-muted-foreground">
+                      <tr>
+                        <th className="text-right p-2">Tier</th>
+                        <th className="text-right p-2">Score</th>
+                        <th className="text-right p-2">Label</th>
+                        <th className="text-right p-2">סגורות</th>
+                        <th className="text-right p-2">Win%</th>
+                        <th className="text-right p-2">ROI</th>
+                        <th className="text-right p-2">PnL</th>
+                        <th className="text-right p-2">שווקים</th>
+                        <th className="text-right p-2">30d</th>
+                        <th className="text-right p-2">סיבה</th>
+                        <th className="text-right p-2"></th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </CardContent>
-        </Card>
+                    </thead>
+                    <tbody>
+                      {visible.map((w) => {
+                        const p = w.perf;
+                        return (
+                          <tr key={w.address} className="border-t">
+                            <td className="p-2">
+                              <Badge variant="outline" className={`text-xs ${TIER_COLORS[w.quality_tier] || ""}`}>
+                                {w.quality_tier}
+                              </Badge>
+                            </td>
+                            <td className="p-2 font-mono">{Number(w.quality_score).toFixed(1)}</td>
+                            <td className="p-2 font-medium max-w-[140px] truncate">
+                              {w.label || w.address.slice(0, 8)}
+                            </td>
+                            <td className="p-2">{p?.closed_positions ?? "—"}</td>
+                            <td className="p-2">
+                              {p?.win_rate != null ? `${(Number(p.win_rate) * 100).toFixed(0)}%` : "—"}
+                            </td>
+                            <td className="p-2">
+                              {p?.avg_roi_pct != null ? `${Number(p.avg_roi_pct).toFixed(1)}%` : "—"}
+                            </td>
+                            <td className="p-2">
+                              {p?.total_pnl_usd != null
+                                ? `$${Math.round(Number(p.total_pnl_usd)).toLocaleString()}`
+                                : "—"}
+                            </td>
+                            <td className="p-2">{p?.unique_markets ?? "—"}</td>
+                            <td className="p-2">{p?.last_30d_trades ?? "—"}</td>
+                            <td className="p-2 text-xs text-muted-foreground max-w-[160px] truncate">
+                              {w.auto_disabled_reason || "—"}
+                            </td>
+                            <td className="p-2">
+                              <a
+                                href={`https://polymarket.com/profile/${w.address}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
+                              >
+                                PM <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

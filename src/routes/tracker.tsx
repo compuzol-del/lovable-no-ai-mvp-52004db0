@@ -100,6 +100,7 @@ function TrackerPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <TopNav />
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div>

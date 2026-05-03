@@ -1,10 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ExternalLink, RefreshCw } from "lucide-react";
+import { TopNav } from "@/components/TopNav";
 
 type Row = {
   address: string;
@@ -62,12 +64,8 @@ function WalletsPage() {
       ...w,
       perf: perfMap.get(w.address) || null,
     }));
-    // Show only whales that passed quality check (active + rated)
-    const passing = merged.filter(
-      (r) => r.is_active && ["S", "A", "B"].includes(r.quality_tier),
-    );
-    passing.sort((a, b) => Number(b.quality_score) - Number(a.quality_score));
-    setRows(passing);
+    merged.sort((a, b) => Number(b.quality_score) - Number(a.quality_score));
+    setRows(merged);
     setLoading(false);
   }
 

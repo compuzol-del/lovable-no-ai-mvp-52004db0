@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ExternalLink, RefreshCw, Power } from "lucide-react";
 import { toast } from "sonner";
+import { TopNav } from "@/components/TopNav";
 
 type Position = {
   id: number;
@@ -129,20 +130,17 @@ function PaperPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <TopNav />
       <div className="mx-auto max-w-6xl p-4 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold">🤖 Paper Bot</h1>
             <p className="text-sm text-muted-foreground">קונה ומוכר אוטומטית לפי סיגנלי לווייתנים</p>
           </div>
-          <div className="flex gap-2">
-            <Link to="/signals"><Button variant="outline" size="sm">Signals</Button></Link>
-            <Link to="/wallets"><Button variant="outline" size="sm">🐋 לווייתנים</Button></Link>
-            <Button onClick={runNow} disabled={running} size="sm">
-              <RefreshCw className={`h-4 w-4 ${running ? "animate-spin" : ""}`} />
-              הפעל עכשיו
-            </Button>
-          </div>
+          <Button onClick={runNow} disabled={running} size="sm">
+            <RefreshCw className={`h-4 w-4 mr-1 ${running ? "animate-spin" : ""}`} />
+            הפעל עכשיו
+          </Button>
         </div>
 
         {/* Status banner */}

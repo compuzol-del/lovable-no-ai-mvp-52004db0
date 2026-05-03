@@ -1,0 +1,1 @@
+SELECT cron.unschedule('compute-whale-signals-2min');

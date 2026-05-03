@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.claim_signals_for_resolution(integer, integer, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_signals_for_resolution(integer, integer, integer) TO service_role;

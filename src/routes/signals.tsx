@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { TopNav } from "@/components/TopNav";
 
 const clampScore = (n: number) => Math.max(0, Math.min(100, n));
 

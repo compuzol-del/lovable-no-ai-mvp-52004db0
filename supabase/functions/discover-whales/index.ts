@@ -36,13 +36,14 @@ Deno.serve(async (req) => {
 
   try {
     const seen = new Map<string, { label: string | null; amount: number }>();
-    for (const w of WINDOWS) {
-      const list = await fetchLeaderboard(w);
+    for (const { board, window } of SOURCES) {
+      const list = await fetchLeaderboard(board, window);
       for (const row of list) {
         const addr = (row.proxyWallet || row.wallet || row.address || "").toLowerCase();
         if (!addr) continue;
         const amount = Number(row.amount ?? row.volume ?? 0);
-        if (amount < MIN_VOLUME_USD) continue;
+        // For profit board, amount is PnL (can be small); skip volume floor there.
+        if (board === "volume" && amount < MIN_VOLUME_USD) continue;
         const label = row.name || row.pseudonym || null;
         const prev = seen.get(addr);
         if (!prev || amount > prev.amount) seen.set(addr, { label, amount });

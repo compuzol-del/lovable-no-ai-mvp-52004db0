@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 const POLYMARKET_CLOB = "https://clob.polymarket.com";
+const POLYMARKET_GAMMA = "https://gamma-api.polymarket.com";
 
 async function fetchPrice(asset: string | null): Promise<number | null> {
   if (!asset) return null;
@@ -19,10 +20,39 @@ async function fetchPrice(asset: string | null): Promise<number | null> {
   }
 }
 
+async function fetchMarketMeta(conditionId: string): Promise<{
+  volume: number; liquidity: number; endDate: string | null; eventId: string | null;
+} | null> {
+  try {
+    const r = await fetch(`${POLYMARKET_GAMMA}/markets?condition_ids=${conditionId}`);
+    if (!r.ok) return null;
+    const arr = await r.json() as any[];
+    const m = Array.isArray(arr) ? arr[0] : null;
+    if (!m) return null;
+    // Prefer volume24hr where available, fall back to all-time volume
+    const vol = Number(m.volume24hr ?? m.volumeNum ?? m.volume ?? 0);
+    const liq = Number(m.liquidityNum ?? m.liquidity ?? 0);
+    return {
+      volume: vol, liquidity: liq,
+      endDate: m.endDate || m.end_date || null,
+      eventId: m.eventId || m.event_id || (m.events?.[0]?.id ?? null),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function sizeForScore(score: number): number {
   if (score >= 95) return 300;
   if (score >= 85) return 175;
   return 100;
+}
+
+// Dynamic TP/SL by entry price tier
+function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string } {
+  if (entry < 0.20) return { tpPct: 50, slPct: -30, tier: "low" };
+  if (entry > 0.60) return { tpPct: 15, slPct: -15, tier: "high" };
+  return { tpPct: 25, slPct: -20, tier: "mid" };
 }
 
 function buildReason(s: any): string {

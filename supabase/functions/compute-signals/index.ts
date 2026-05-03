@@ -180,13 +180,24 @@ Deno.serve(async (req) => {
     const sAgreement = scorePriceAgreement(prices, usdWeights);
     const sBurst = scoreBurst(burstMinutes);
 
-    const finalScore =
+    // Reversal bonus: count whales in this group who SOLD this market in the past 14d
+    let reversalCount = 0;
+    if (reversalBonusEnabled) {
+      for (const w of wallets) {
+        if (sellSet.has(`${w}::${g.condition_id}`)) reversalCount++;
+      }
+    }
+    // Each reversal whale adds +5 to final score, capped at +15
+    const reversalBonus = Math.min(15, reversalCount * 5);
+
+    const baseScore =
       WEIGHTS.consensus * sConsensus +
       WEIGHTS.capital * sCapital +
       WEIGHTS.freshness * sFreshness +
       WEIGHTS.drift * sDrift +
       WEIGHTS.agreement * sAgreement +
       WEIGHTS.burst * sBurst;
+    const finalScore = Math.min(100, baseScore + reversalBonus);
 
     const action = decide(finalScore, uniqueWallets, totalUsd, driftPct, burstMinutes);
     if (action === "IGNORE") continue;

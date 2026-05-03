@@ -228,6 +228,7 @@ Deno.serve(async (req) => {
         drift: { score: Number(sDrift.toFixed(1)), weight: WEIGHTS.drift },
         agreement: { score: Number(sAgreement.toFixed(1)), weight: WEIGHTS.agreement },
         burst: { score: Number(sBurst.toFixed(1)), weight: WEIGHTS.burst },
+        reversal: { count: reversalCount, bonus: reversalBonus },
       },
       action, computed_at: computedAt,
     });

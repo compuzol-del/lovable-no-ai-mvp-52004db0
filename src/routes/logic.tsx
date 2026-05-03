@@ -73,10 +73,10 @@ function LogicPage() {
           <CardHeader><CardTitle>מתי הבוט מוכר? (5 חוקי יציאה)</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
             <ol className="list-decimal pr-6 space-y-2">
-              <li><b className="text-green-500">TAKE_PROFIT:</b> מחיר ≥ +25% מהכניסה.</li>
-              <li><b className="text-red-500">STOP_LOSS:</b> מחיר ≤ -20% מהכניסה.</li>
+              <li><b className="text-green-500">TAKE_PROFIT דינמי:</b> תלוי במחיר כניסה — מחיר נמוך (&lt;0.20) → +50%, בינוני (0.20-0.60) → +25%, גבוה (&gt;0.60) → +15%.</li>
+              <li><b className="text-red-500">STOP_LOSS דינמי:</b> נמוך → -30%, בינוני → -20%, גבוה → -15%. נועד למנוע יציאות מוקדמות מ-noise בשווקים זולים.</li>
               <li><b className="text-blue-500">BREAKEVEN_STOP:</b> ברגע שהמחיר הגיע ל-+15%, ה-SL זז למחיר הכניסה. אם יורד חזרה — סוגרים בלי הפסד.</li>
-              <li><b>TIME_STOP:</b> פוזיציה פתוחה יותר מ-24 שעות → סגירה.</li>
+              <li><b>TIME_STOP דינמי:</b> מינימום בין 24 שעות לבין 25% מהזמן עד סגירת השוק (לפחות 2 שעות).</li>
               <li><b>WHALE_REVERSAL:</b> אם ≥2 מהלווייתנים שגרמו לכניסה התחילו למכור את אותו שוק → סגירה מיידית.</li>
             </ol>
           </CardContent>

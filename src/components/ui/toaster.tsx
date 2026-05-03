@@ -11,10 +11,10 @@ export function Toaster() {
         return (
           <Toast key={id} {...props}>
             <div className="grid gap-1">
-              {title && <ToastTitle>{title as React.ReactNode}</ToastTitle>}
-              {description && <ToastDescription>{description as React.ReactNode}</ToastDescription>}
+              {title && <ToastTitle>{title as any}</ToastTitle>}
+              {description && <ToastDescription>{description as any}</ToastDescription>}
             </div>
-            {action as React.ReactNode}
+            {action as any}
             <ToastClose />
           </Toast>
         );

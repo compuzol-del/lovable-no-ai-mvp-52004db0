@@ -49,7 +49,16 @@ function LogicPage() {
               <li>score ≥ <code>min_score</code> (ברירת מחדל 75)</li>
               <li>price drift ≥ -3%</li>
               <li>אין כבר פוזיציה פתוחה על אותו שוק</li>
-              <li>מחיר בין 0.01 ל-0.99</li>
+              <li>מחיר כניסה בין 0.01 ל-0.99</li>
+              <li><b>נפח 24 שעות בשוק ≥ $5,000</b> (סינון שווקים מתים)</li>
+              <li><b>נזילות בשוק ≥ $1,000</b> (לוודא שאפשר לקנות בלי slippage גדול)</li>
+              <li><b>מקסימום 2 פוזיציות פתוחות באותו אירוע</b> (event_id) — מונע over-concentration</li>
+              <li><b>מקסימום 15 פוזיציות פתוחות בו-זמנית</b></li>
+            </ul>
+            <p className="font-semibold mt-2">בונוס Reversal (×2 weight על משקיעי-עומק):</p>
+            <ul className="list-disc pr-6 space-y-1">
+              <li>אם whale שמכר את השוק הזה ב-14 יום האחרונים חוזר וקונה — זה אות חזק במיוחד (החליף דעה).</li>
+              <li>כל whale-reversal מוסיף +5 לציון (עד מקסימום +15).</li>
             </ul>
             <p className="font-semibold mt-2">גודל פוזיציה לפי ציון:</p>
             <ul className="list-disc pr-6 space-y-1">

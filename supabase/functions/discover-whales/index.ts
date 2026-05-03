@@ -19,7 +19,7 @@ async function fetchLeaderboard(board: string, window: string) {
   const url = `https://lb-api.polymarket.com/${board}?window=${window}&limit=500`;
   const r = await fetch(url);
   if (!r.ok) {
-    console.error(`leaderboard ${window} failed: ${r.status}`);
+    console.error(`leaderboard ${board}/${window} failed: ${r.status}`);
     return [];
   }
   const data = await r.json();

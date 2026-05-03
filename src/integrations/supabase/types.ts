@@ -265,10 +265,17 @@ export type Database = {
       paper_bot_config: {
         Row: {
           breakeven_trigger_pct: number
+          dynamic_exits: boolean
+          dynamic_time_stop: boolean
           enabled: boolean
           id: number
+          max_open_per_event: number
+          max_open_total: number
           min_drift_pct: number
+          min_market_liquidity_usd: number
+          min_market_volume_usd: number
           min_score: number
+          reversal_buy_bonus: boolean
           sl_pct: number
           time_stop_hours: number
           tp_pct: number
@@ -277,10 +284,17 @@ export type Database = {
         }
         Insert: {
           breakeven_trigger_pct?: number
+          dynamic_exits?: boolean
+          dynamic_time_stop?: boolean
           enabled?: boolean
           id?: number
+          max_open_per_event?: number
+          max_open_total?: number
           min_drift_pct?: number
+          min_market_liquidity_usd?: number
+          min_market_volume_usd?: number
           min_score?: number
+          reversal_buy_bonus?: boolean
           sl_pct?: number
           time_stop_hours?: number
           tp_pct?: number
@@ -289,10 +303,17 @@ export type Database = {
         }
         Update: {
           breakeven_trigger_pct?: number
+          dynamic_exits?: boolean
+          dynamic_time_stop?: boolean
           enabled?: boolean
           id?: number
+          max_open_per_event?: number
+          max_open_total?: number
           min_drift_pct?: number
+          min_market_liquidity_usd?: number
+          min_market_volume_usd?: number
           min_score?: number
+          reversal_buy_bonus?: boolean
           sl_pct?: number
           time_stop_hours?: number
           tp_pct?: number
@@ -309,16 +330,20 @@ export type Database = {
           condition_id: string
           current_price: number | null
           entry_price: number
+          event_id: string | null
           exit_price: number | null
           exit_reason: string | null
           exit_strategy: string
           id: number
           last_price_at: string | null
+          market_liquidity_usd: number | null
+          market_volume_usd: number | null
           opened_at: string
           outcome: string | null
           peak_price: number | null
           pnl_pct: number | null
           pnl_usd: number | null
+          price_tier: string | null
           reason: string
           score: number
           score_breakdown: Json | null
@@ -328,6 +353,7 @@ export type Database = {
           sl_price: number
           status: string
           time_stop_at: string
+          time_to_resolution_hours: number | null
           title: string | null
           total_usd: number | null
           tp_price: number
@@ -342,16 +368,20 @@ export type Database = {
           condition_id: string
           current_price?: number | null
           entry_price: number
+          event_id?: string | null
           exit_price?: number | null
           exit_reason?: string | null
           exit_strategy: string
           id?: number
           last_price_at?: string | null
+          market_liquidity_usd?: number | null
+          market_volume_usd?: number | null
           opened_at?: string
           outcome?: string | null
           peak_price?: number | null
           pnl_pct?: number | null
           pnl_usd?: number | null
+          price_tier?: string | null
           reason: string
           score: number
           score_breakdown?: Json | null
@@ -361,6 +391,7 @@ export type Database = {
           sl_price: number
           status?: string
           time_stop_at: string
+          time_to_resolution_hours?: number | null
           title?: string | null
           total_usd?: number | null
           tp_price: number
@@ -375,16 +406,20 @@ export type Database = {
           condition_id?: string
           current_price?: number | null
           entry_price?: number
+          event_id?: string | null
           exit_price?: number | null
           exit_reason?: string | null
           exit_strategy?: string
           id?: number
           last_price_at?: string | null
+          market_liquidity_usd?: number | null
+          market_volume_usd?: number | null
           opened_at?: string
           outcome?: string | null
           peak_price?: number | null
           pnl_pct?: number | null
           pnl_usd?: number | null
+          price_tier?: string | null
           reason?: string
           score?: number
           score_breakdown?: Json | null
@@ -394,6 +429,7 @@ export type Database = {
           sl_price?: number
           status?: string
           time_stop_at?: string
+          time_to_resolution_hours?: number | null
           title?: string | null
           total_usd?: number | null
           tp_price?: number

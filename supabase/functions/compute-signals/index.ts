@@ -103,6 +103,12 @@ Deno.serve(async (req) => {
   );
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const reversalLookback = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Load config (for reversal bonus toggle)
+  const { data: cfgRow } = await supabaseAdmin
+    .from("paper_bot_config").select("reversal_buy_bonus").eq("id", 1).maybeSingle();
+  const reversalBonusEnabled = cfgRow?.reversal_buy_bonus !== false;
 
   const { data: rows, error } = await supabaseAdmin
     .from("trade_alerts")
@@ -112,6 +118,21 @@ Deno.serve(async (req) => {
     .not("condition_id", "is", null)
     .order("ts", { ascending: false })
     .limit(10000);
+
+  // Load past SELLs (last 14 days) for reversal detection
+  const { data: pastSells } = await supabaseAdmin
+    .from("trade_alerts")
+    .select("wallet_address,condition_id,ts")
+    .gte("ts", reversalLookback)
+    .lt("ts", since)
+    .eq("side", "SELL")
+    .not("condition_id", "is", null)
+    .limit(20000);
+
+  const sellSet = new Set<string>();
+  for (const s of (pastSells || []) as any[]) {
+    sellSet.add(`${s.wallet_address}::${s.condition_id}`);
+  }
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });

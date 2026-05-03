@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 const POLYMARKET_CLOB = "https://clob.polymarket.com";
+const POLYMARKET_GAMMA = "https://gamma-api.polymarket.com";
 
 async function fetchPrice(asset: string | null): Promise<number | null> {
   if (!asset) return null;
@@ -19,10 +20,39 @@ async function fetchPrice(asset: string | null): Promise<number | null> {
   }
 }
 
+async function fetchMarketMeta(conditionId: string): Promise<{
+  volume: number; liquidity: number; endDate: string | null; eventId: string | null;
+} | null> {
+  try {
+    const r = await fetch(`${POLYMARKET_GAMMA}/markets?condition_ids=${conditionId}`);
+    if (!r.ok) return null;
+    const arr = await r.json() as any[];
+    const m = Array.isArray(arr) ? arr[0] : null;
+    if (!m) return null;
+    // Prefer volume24hr where available, fall back to all-time volume
+    const vol = Number(m.volume24hr ?? m.volumeNum ?? m.volume ?? 0);
+    const liq = Number(m.liquidityNum ?? m.liquidity ?? 0);
+    return {
+      volume: vol, liquidity: liq,
+      endDate: m.endDate || m.end_date || null,
+      eventId: m.eventId || m.event_id || (m.events?.[0]?.id ?? null),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function sizeForScore(score: number): number {
   if (score >= 95) return 300;
   if (score >= 85) return 175;
   return 100;
+}
+
+// Dynamic TP/SL by entry price tier
+function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string } {
+  if (entry < 0.20) return { tpPct: 50, slPct: -30, tier: "low" };
+  if (entry > 0.60) return { tpPct: 15, slPct: -15, tier: "high" };
+  return { tpPct: 25, slPct: -20, tier: "mid" };
 }
 
 function buildReason(s: any): string {
@@ -120,6 +150,22 @@ Deno.serve(async (req) => {
   }
 
   if (cfg.enabled) {
+    // Concentration: count current open positions and group by event
+    const { data: openAll } = await supabaseAdmin
+      .from("paper_positions").select("event_id").eq("status", "OPEN");
+    const openByEvent = new Map<string, number>();
+    let totalOpen = (openAll || []).length;
+    for (const o of openAll || []) {
+      const k = o.event_id || "_none_";
+      openByEvent.set(k, (openByEvent.get(k) || 0) + 1);
+    }
+    const maxTotal = Number(cfg.max_open_total ?? 15);
+    const maxPerEvent = Number(cfg.max_open_per_event ?? 2);
+    const minVol = Number(cfg.min_market_volume_usd ?? 0);
+    const minLiq = Number(cfg.min_market_liquidity_usd ?? 0);
+    const useDynExits = cfg.dynamic_exits !== false;
+    const useDynTime = cfg.dynamic_time_stop !== false;
+
     const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: signals } = await supabaseAdmin
       .from("whale_signals").select("*").eq("action", "STRONG_BUY")
@@ -127,6 +173,10 @@ Deno.serve(async (req) => {
       .order("score", { ascending: false }).limit(50);
 
     for (const s of signals || []) {
+      if (totalOpen >= maxTotal) {
+        skipped.push({ condition_id: s.condition_id, why: `max_open_total ${maxTotal}` });
+        continue;
+      }
       if (s.price_drift_pct != null && Number(s.price_drift_pct) < Number(cfg.min_drift_pct)) {
         skipped.push({ condition_id: s.condition_id, why: `drift ${s.price_drift_pct}` });
         continue;
@@ -140,22 +190,51 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const meta = await fetchMarketMeta(s.condition_id);
+      if (meta) {
+        if (minVol > 0 && meta.volume < minVol) {
+          skipped.push({ condition_id: s.condition_id, why: `volume ${Math.round(meta.volume)} < ${minVol}` });
+          continue;
+        }
+        if (minLiq > 0 && meta.liquidity < minLiq) {
+          skipped.push({ condition_id: s.condition_id, why: `liquidity ${Math.round(meta.liquidity)} < ${minLiq}` });
+          continue;
+        }
+      }
+      const eventKey = meta?.eventId || "_none_";
+      if ((openByEvent.get(eventKey) || 0) >= maxPerEvent) {
+        skipped.push({ condition_id: s.condition_id, why: `max_per_event ${maxPerEvent}` });
+        continue;
+      }
+
       const entry = (await fetchPrice(s.asset)) ?? Number(s.current_price ?? s.avg_price);
-      if (!entry || entry <= 0 || entry >= 0.99) {
+      if (!entry || entry <= 0.01 || entry >= 0.99) {
         skipped.push({ condition_id: s.condition_id, why: `bad entry ${entry}` });
         continue;
       }
 
+      // Dynamic TP/SL by entry price tier (or fall back to config flat values)
+      const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat" };
+
+      // Dynamic time-stop: min(config hours, 25% of time-to-resolution)
+      let timeStopHours = Number(cfg.time_stop_hours);
+      let ttrHours: number | null = null;
+      if (useDynTime && meta?.endDate) {
+        const ttrMs = new Date(meta.endDate).getTime() - Date.now();
+        if (ttrMs > 0) {
+          ttrHours = ttrMs / 3600000;
+          timeStopHours = Math.max(2, Math.min(timeStopHours, ttrHours * 0.25));
+        }
+      }
+
       const sizeUsd = sizeForScore(Number(s.score));
       const shares = sizeUsd / entry;
-      const tpPrice = Math.min(0.99, entry * (1 + Number(cfg.tp_pct) / 100));
-      const slPrice = Math.max(0.01, entry * (1 + Number(cfg.sl_pct) / 100));
-      const timeStopAt = new Date(Date.now() + Number(cfg.time_stop_hours) * 3600 * 1000);
+      const tpPrice = Math.min(0.99, entry * (1 + tier.tpPct / 100));
+      const slPrice = Math.max(0.01, entry * (1 + tier.slPct / 100));
+      const timeStopAt = new Date(Date.now() + timeStopHours * 3600 * 1000);
 
       const reason = buildReason(s);
-      const exitStrategy = buildExitStrategy(
-        Number(cfg.tp_pct), Number(cfg.sl_pct), Number(cfg.time_stop_hours), entry,
-      );
+      const exitStrategy = buildExitStrategy(tier.tpPct, tier.slPct, timeStopHours, entry);
 
       const { error: insErr, data: ins } = await supabaseAdmin.from("paper_positions").insert({
         signal_id: s.id, condition_id: s.condition_id, asset: s.asset, outcome: s.outcome, title: s.title,
@@ -165,10 +244,19 @@ Deno.serve(async (req) => {
         tp_price: tpPrice, sl_price: slPrice, time_stop_at: timeStopAt.toISOString(),
         exit_strategy: exitStrategy, current_price: entry,
         last_price_at: new Date().toISOString(), status: "OPEN",
+        event_id: meta?.eventId ?? null,
+        market_volume_usd: meta?.volume ?? null,
+        market_liquidity_usd: meta?.liquidity ?? null,
+        price_tier: tier.tier,
+        time_to_resolution_hours: ttrHours,
       }).select("id").single();
 
       if (insErr) skipped.push({ condition_id: s.condition_id, why: insErr.message });
-      else opened.push({ id: ins?.id, score: s.score, sizeUsd, entry });
+      else {
+        opened.push({ id: ins?.id, score: s.score, sizeUsd, entry, tier: tier.tier });
+        totalOpen++;
+        openByEvent.set(eventKey, (openByEvent.get(eventKey) || 0) + 1);
+      }
     }
   }
 

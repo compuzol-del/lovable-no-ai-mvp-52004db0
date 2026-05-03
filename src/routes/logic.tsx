@@ -49,7 +49,16 @@ function LogicPage() {
               <li>score ≥ <code>min_score</code> (ברירת מחדל 75)</li>
               <li>price drift ≥ -3%</li>
               <li>אין כבר פוזיציה פתוחה על אותו שוק</li>
-              <li>מחיר בין 0.01 ל-0.99</li>
+              <li>מחיר כניסה בין 0.01 ל-0.99</li>
+              <li><b>נפח 24 שעות בשוק ≥ $5,000</b> (סינון שווקים מתים)</li>
+              <li><b>נזילות בשוק ≥ $1,000</b> (לוודא שאפשר לקנות בלי slippage גדול)</li>
+              <li><b>מקסימום 2 פוזיציות פתוחות באותו אירוע</b> (event_id) — מונע over-concentration</li>
+              <li><b>מקסימום 15 פוזיציות פתוחות בו-זמנית</b></li>
+            </ul>
+            <p className="font-semibold mt-2">בונוס Reversal (×2 weight על משקיעי-עומק):</p>
+            <ul className="list-disc pr-6 space-y-1">
+              <li>אם whale שמכר את השוק הזה ב-14 יום האחרונים חוזר וקונה — זה אות חזק במיוחד (החליף דעה).</li>
+              <li>כל whale-reversal מוסיף +5 לציון (עד מקסימום +15).</li>
             </ul>
             <p className="font-semibold mt-2">גודל פוזיציה לפי ציון:</p>
             <ul className="list-disc pr-6 space-y-1">
@@ -64,10 +73,10 @@ function LogicPage() {
           <CardHeader><CardTitle>מתי הבוט מוכר? (5 חוקי יציאה)</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
             <ol className="list-decimal pr-6 space-y-2">
-              <li><b className="text-green-500">TAKE_PROFIT:</b> מחיר ≥ +25% מהכניסה.</li>
-              <li><b className="text-red-500">STOP_LOSS:</b> מחיר ≤ -20% מהכניסה.</li>
+              <li><b className="text-green-500">TAKE_PROFIT דינמי:</b> תלוי במחיר כניסה — מחיר נמוך (&lt;0.20) → +50%, בינוני (0.20-0.60) → +25%, גבוה (&gt;0.60) → +15%.</li>
+              <li><b className="text-red-500">STOP_LOSS דינמי:</b> נמוך → -30%, בינוני → -20%, גבוה → -15%. נועד למנוע יציאות מוקדמות מ-noise בשווקים זולים.</li>
               <li><b className="text-blue-500">BREAKEVEN_STOP:</b> ברגע שהמחיר הגיע ל-+15%, ה-SL זז למחיר הכניסה. אם יורד חזרה — סוגרים בלי הפסד.</li>
-              <li><b>TIME_STOP:</b> פוזיציה פתוחה יותר מ-24 שעות → סגירה.</li>
+              <li><b>TIME_STOP דינמי:</b> מינימום בין 24 שעות לבין 25% מהזמן עד סגירת השוק (לפחות 2 שעות).</li>
               <li><b>WHALE_REVERSAL:</b> אם ≥2 מהלווייתנים שגרמו לכניסה התחילו למכור את אותו שוק → סגירה מיידית.</li>
             </ol>
           </CardContent>

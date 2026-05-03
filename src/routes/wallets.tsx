@@ -164,7 +164,15 @@ function WalletsPage() {
                             </td>
                             <td className="p-2 font-mono">{Number(w.quality_score).toFixed(1)}</td>
                             <td className="p-2 font-medium max-w-[140px] truncate">
-                              {w.label || w.address.slice(0, 8)}
+                              <a
+                                href={`https://polymarket.com/profile/${w.address}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline"
+                                title={w.address}
+                              >
+                                {w.label || w.address.slice(0, 8)}
+                              </a>
                             </td>
                             <td className="p-2">{p?.closed_positions ?? "—"}</td>
                             <td className="p-2">

@@ -6,7 +6,6 @@ const tabs = [
   { to: "/wallets", label: "🐋 לווייתנים" },
   { to: "/signals", label: "📡 סיגנלים" },
   { to: "/logic", label: "📖 לוגיקה" },
-  { to: "/tracker", label: "📰 חדשות" },
 ];
 
 export function TopNav() {

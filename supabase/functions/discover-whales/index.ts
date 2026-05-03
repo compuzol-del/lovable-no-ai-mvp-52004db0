@@ -9,10 +9,14 @@ const corsHeaders = {
 
 const TARGET = 100;
 const MIN_VOLUME_USD = 250_000; // proxy for "thousands of trades" in last 90d
-const WINDOWS = ["month", "all"]; // pull from multiple windows for breadth
+// Polymarket only serves all-time leaderboards reliably; combine volume + profit for breadth.
+const SOURCES = [
+  { board: "volume", window: "all" },
+  { board: "profit", window: "all" },
+];
 
-async function fetchLeaderboard(window: string) {
-  const url = `https://lb-api.polymarket.com/volume?window=${window}&limit=500`;
+async function fetchLeaderboard(board: string, window: string) {
+  const url = `https://lb-api.polymarket.com/${board}?window=${window}&limit=500`;
   const r = await fetch(url);
   if (!r.ok) {
     console.error(`leaderboard ${window} failed: ${r.status}`);

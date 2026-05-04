@@ -43,9 +43,9 @@ async function fetchMarketMeta(conditionId: string): Promise<{
 }
 
 function sizeForScore(score: number): number {
-  if (score >= 95) return 300;
-  if (score >= 85) return 175;
-  return 100;
+  if (score >= 95) return 90;
+  if (score >= 85) return 60;
+  return 30;
 }
 
 // Dynamic TP/SL by entry price tier

@@ -131,6 +131,12 @@ Deno.serve(async (req) => {
     }
 
     if (exitReason) {
+      // Realistic stop-loss fill: assume sell near SL with up to 5% slippage,
+      // not at whatever current price happens to be (which can gap far below SL).
+      if ((exitReason === "STOP_LOSS" || exitReason === "BREAKEVEN_STOP") && cur != null) {
+        const worstAcceptable = slPrice * 0.95;
+        exitPrice = Math.max(worstAcceptable, Math.min(slPrice, cur));
+      }
       const pnlUsd = (exitPrice - entry) * Number(p.shares);
       const pnlPct = ((exitPrice - entry) / entry) * 100;
       await supabaseAdmin.from("paper_positions").update({

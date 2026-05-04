@@ -299,10 +299,23 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        {/* Reason */}
+        {/* Reason — bullets, without wallet addresses */}
         <div className="bg-muted/50 rounded p-2">
           <div className="text-xs text-muted-foreground mb-1">למה נכנסנו:</div>
-          <div>{p.reason}</div>
+          <ul className="list-disc pr-5 space-y-0.5 text-sm">
+            {(() => {
+              // Strip wallet addresses (0x… 40-hex) and split into bullets
+              const cleaned = (p.reason || "")
+                .replace(/0x[a-fA-F0-9]{40}/g, "")
+                .replace(/\s{2,}/g, " ")
+                .trim();
+              const parts = cleaned
+                .split(/[•·\n]|(?:\s\|\s)|(?:,\s)/)
+                .map((s) => s.trim())
+                .filter((s) => s.length > 1);
+              return (parts.length ? parts : [cleaned]).map((b, i) => <li key={i}>{b}</li>);
+            })()}
+          </ul>
         </div>
 
         {/* Prices */}

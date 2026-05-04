@@ -34,10 +34,21 @@ async function fetchAll<T>(url: string, limit = 500, max = 5000): Promise<T[]> {
   return out;
 }
 
-function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number }): { tier: string; score: number } {
-  const { closed, winRate, avgRoi, last30d, markets } = metrics;
-  if (closed < 50) return { tier: "EXCLUDED", score: 0 };
-  if (winRate < 0.5) return { tier: "EXCLUDED", score: 0 };
+function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number; volumeUsd: number }): { tier: string; score: number } {
+  const { closed, winRate, avgRoi, last30d, markets, volumeUsd } = metrics;
+
+  // Activity-based fallback: highly active whales with significant volume
+  // shouldn't be excluded just because Polymarket reports few "closed" positions
+  // (most of their positions are still in unresolved markets).
+  const isActiveHighVolume = last30d >= 30 && volumeUsd >= 100_000;
+
+  if (!isActiveHighVolume) {
+    if (closed < 25) return { tier: "EXCLUDED", score: 0 };
+    if (winRate < 0.5) return { tier: "EXCLUDED", score: 0 };
+  } else {
+    // For active whales, only exclude if we DO have enough closed data and it's bad
+    if (closed >= 25 && winRate < 0.45) return { tier: "EXCLUDED", score: 0 };
+  }
 
   let score = 0;
   score += Math.min(25, (closed / 500) * 25);
@@ -45,6 +56,10 @@ function computeTier(metrics: { closed: number; winRate: number; avgRoi: number;
   score += Math.max(0, Math.min(25, (avgRoi / 20) * 25));
   score += Math.min(10, (last30d / 30) * 10);
   score += Math.min(10, (markets / 50) * 10);
+  // Volume bonus for active high-volume whales lacking closed-position data
+  if (isActiveHighVolume && closed < 25) {
+    score += Math.min(20, (volumeUsd / 1_000_000) * 10);
+  }
 
   let tier: string;
   if (closed >= MIN_CLOSED && winRate >= MIN_WIN_RATE && avgRoi >= MIN_AVG_ROI && last30d >= MIN_30D_TRADES && markets >= MIN_MARKETS && score >= 75) {
@@ -109,7 +124,7 @@ Deno.serve(async (req) => {
       const lastTradeTs = trades.reduce((m: number, t: any) => Math.max(m, Number(t.timestamp ?? 0)), 0);
 
       const { tier, score } = computeTier({
-        closed: totalDecided, winRate, avgRoi, last30d: last30dTrades, markets: uniqueMarkets,
+        closed: totalDecided, winRate, avgRoi, last30d: last30dTrades, markets: uniqueMarkets, volumeUsd: totalVolume,
       });
 
       await supabaseAdmin.from("whale_performance").upsert({

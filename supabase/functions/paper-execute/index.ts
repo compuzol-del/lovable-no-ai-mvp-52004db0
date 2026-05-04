@@ -49,10 +49,10 @@ function sizeForScore(score: number): number {
 }
 
 // Dynamic TP/SL by entry price tier
-function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string } {
-  if (entry < 0.20) return { tpPct: 50, slPct: -30, tier: "low" };
-  if (entry > 0.60) return { tpPct: 15, slPct: -10, tier: "high" };
-  return { tpPct: 25, slPct: -15, tier: "mid" };
+function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string; maxHours: number } {
+  if (entry < 0.20) return { tpPct: 50, slPct: -30, tier: "low", maxHours: 24 };
+  if (entry > 0.60) return { tpPct: 15, slPct: -10, tier: "high", maxHours: 6 };
+  return { tpPct: 25, slPct: -15, tier: "mid", maxHours: 12 };
 }
 
 function buildReason(s: any): string {
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
   for (const p of openPos || []) {
     const cur = await fetchPrice(p.asset);
     let exitReason: string | null = null;
-    const exitPrice = cur ?? Number(p.current_price ?? p.entry_price);
+    let exitPrice = cur ?? Number(p.current_price ?? p.entry_price);
     const entry = Number(p.entry_price);
     const peak = Math.max(Number(p.peak_price ?? entry), cur ?? entry);
     let slPrice = Number(p.sl_price);
@@ -131,6 +131,12 @@ Deno.serve(async (req) => {
     }
 
     if (exitReason) {
+      // Realistic stop-loss fill: assume sell near SL with up to 5% slippage,
+      // not at whatever current price happens to be (which can gap far below SL).
+      if ((exitReason === "STOP_LOSS" || exitReason === "BREAKEVEN_STOP") && cur != null) {
+        const worstAcceptable = slPrice * 0.95;
+        exitPrice = Math.max(worstAcceptable, Math.min(slPrice, cur));
+      }
       const pnlUsd = (exitPrice - entry) * Number(p.shares);
       const pnlPct = ((exitPrice - entry) / entry) * 100;
       await supabaseAdmin.from("paper_positions").update({
@@ -238,10 +244,10 @@ Deno.serve(async (req) => {
       }
 
       // Dynamic TP/SL by entry price tier (or fall back to config flat values)
-      const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat" };
+      const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat", maxHours: Number(cfg.time_stop_hours) };
 
-      // Dynamic time-stop: min(config hours, 25% of time-to-resolution)
-      let timeStopHours = Number(cfg.time_stop_hours);
+      // Dynamic time-stop: min(config hours, tier max, 25% of time-to-resolution)
+      let timeStopHours = Math.min(Number(cfg.time_stop_hours), tier.maxHours);
       let ttrHours: number | null = null;
       if (useDynTime && meta?.endDate) {
         const ttrMs = new Date(meta.endDate).getTime() - Date.now();
@@ -249,6 +255,13 @@ Deno.serve(async (req) => {
           ttrHours = ttrMs / 3600000;
           timeStopHours = Math.max(2, Math.min(timeStopHours, ttrHours * 0.25));
         }
+      }
+
+      // Gap-risk filter: high-tier (entry > 0.60) on markets resolving within 12h
+      // are prone to sudden price gaps around events (goals, decisions). Skip them.
+      if (tier.tier === "high" && ttrHours != null && ttrHours < 12) {
+        skipped.push({ condition_id: s.condition_id, why: `gap risk: high tier + ttr ${ttrHours.toFixed(1)}h` });
+        continue;
       }
 
       const sizeUsd = sizeForScore(Number(s.score));

@@ -81,10 +81,6 @@ export interface FileRouteTypes {
     | '/signals'
     | '/tracker'
     | '/wallets'
-    | '/api/public/hooks/compute-signals'
-    | '/api/public/hooks/paper-execute'
-    | '/api/public/hooks/refresh-whale-performance'
-    | '/api/public/hooks/scan-wallets'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -93,10 +89,6 @@ export interface FileRouteTypes {
     | '/signals'
     | '/tracker'
     | '/wallets'
-    | '/api/public/hooks/compute-signals'
-    | '/api/public/hooks/paper-execute'
-    | '/api/public/hooks/refresh-whale-performance'
-    | '/api/public/hooks/scan-wallets'
   id:
     | '__root__'
     | '/'
@@ -105,10 +97,6 @@ export interface FileRouteTypes {
     | '/signals'
     | '/tracker'
     | '/wallets'
-    | '/api/public/hooks/compute-signals'
-    | '/api/public/hooks/paper-execute'
-    | '/api/public/hooks/refresh-whale-performance'
-    | '/api/public/hooks/scan-wallets'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,10 +106,6 @@ export interface RootRouteChildren {
   SignalsRoute: typeof SignalsRoute
   TrackerRoute: typeof TrackerRoute
   WalletsRoute: typeof WalletsRoute
-  ApiPublicHooksComputeSignalsRoute: typeof ApiPublicHooksComputeSignalsRoute
-  ApiPublicHooksPaperExecuteRoute: typeof ApiPublicHooksPaperExecuteRoute
-  ApiPublicHooksRefreshWhalePerformanceRoute: typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  ApiPublicHooksScanWalletsRoute: typeof ApiPublicHooksScanWalletsRoute
 }
 
 declare module '@tanstack/react-router' {

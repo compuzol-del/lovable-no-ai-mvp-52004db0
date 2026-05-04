@@ -42,6 +42,18 @@ Deno.serve(async (req) => {
   );
 
   try {
+    // Optional body: { wantNew?: number } — when provided, return only that
+    // many wallets that are NOT already tracked, picking the highest-ranked.
+    let wantNew: number | null = null;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body && typeof body.wantNew === "number" && body.wantNew > 0) {
+          wantNew = Math.min(200, Math.floor(body.wantNew));
+        }
+      } catch (_) { /* no body */ }
+    }
+
     // Track best (label, source priority, normalized score) per wallet.
     // Score = priority * 1e9 + amount, so profit-board entries always rank above
     // volume-only entries even if their dollar amount is smaller.
@@ -61,9 +73,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    const ranked = [...seen.entries()]
-      .sort((a, b) => b[1].score - a[1].score)
-      .slice(0, TARGET);
+    let ranked = [...seen.entries()].sort((a, b) => b[1].score - a[1].score);
+
+    // When wantNew is set, filter out wallets already in tracked_wallets and
+    // take only the top `wantNew` brand-new ones.
+    if (wantNew !== null) {
+      const { data: existing } = await supabase
+        .from("tracked_wallets")
+        .select("address");
+      const have = new Set((existing || []).map((r: any) => r.address.toLowerCase()));
+      ranked = ranked.filter(([addr]) => !have.has(addr)).slice(0, wantNew);
+    } else {
+      ranked = ranked.slice(0, TARGET);
+    }
 
     let inserted = 0;
     for (const [address, meta] of ranked) {

@@ -36,7 +36,7 @@ async function fetchAll<T>(url: string, limit = 500, max = 5000): Promise<T[]> {
 
 function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number }): { tier: string; score: number } {
   const { closed, winRate, avgRoi, last30d, markets } = metrics;
-  if (closed < 50) return { tier: "EXCLUDED", score: 0 };
+  if (closed < 25) return { tier: "EXCLUDED", score: 0 };
   if (winRate < 0.5) return { tier: "EXCLUDED", score: 0 };
 
   let score = 0;

@@ -97,7 +97,9 @@ function PaperPage() {
       supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
     ]);
     setOpen((o as Position[]) || []);
-    setClosed((c as Position[]) || []);
+    // סינון פוזיציות סגורות עם PnL = 0 (רעש - לא רווח ולא הפסד)
+    const closedFiltered = ((c as Position[]) || []).filter((p) => Number(p.pnl_usd ?? 0) !== 0);
+    setClosed(closedFiltered);
     setConfig(cfg as Config | null);
     setLoading(false);
   }

@@ -93,7 +93,7 @@ function PaperPage() {
   async function load() {
     const [{ data: o }, { data: c }, { data: cfg }] = await Promise.all([
       supabase.from("paper_positions").select("*").eq("status", "OPEN").order("opened_at", { ascending: false }),
-      supabase.from("paper_positions").select("*").eq("status", "CLOSED").order("closed_at", { ascending: false }).limit(50),
+      supabase.from("paper_positions").select("*").eq("status", "CLOSED").order("closed_at", { ascending: false }).limit(500),
       supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
     ]);
     setOpen((o as Position[]) || []);

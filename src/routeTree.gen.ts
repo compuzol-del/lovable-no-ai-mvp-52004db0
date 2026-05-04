@@ -15,10 +15,6 @@ import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as PaperRouteImport } from './routes/paper'
 import { Route as LogicRouteImport } from './routes/logic'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiPublicHooksScanWalletsRouteImport } from './routes/api/public/hooks/scan-wallets'
-import { Route as ApiPublicHooksRefreshWhalePerformanceRouteImport } from './routes/api/public/hooks/refresh-whale-performance'
-import { Route as ApiPublicHooksPaperExecuteRouteImport } from './routes/api/public/hooks/paper-execute'
-import { Route as ApiPublicHooksComputeSignalsRouteImport } from './routes/api/public/hooks/compute-signals'
 
 const WalletsRoute = WalletsRouteImport.update({
   id: '/wallets',
@@ -50,30 +46,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksScanWalletsRoute =
-  ApiPublicHooksScanWalletsRouteImport.update({
-    id: '/api/public/hooks/scan-wallets',
-    path: '/api/public/hooks/scan-wallets',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksRefreshWhalePerformanceRoute =
-  ApiPublicHooksRefreshWhalePerformanceRouteImport.update({
-    id: '/api/public/hooks/refresh-whale-performance',
-    path: '/api/public/hooks/refresh-whale-performance',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPaperExecuteRoute =
-  ApiPublicHooksPaperExecuteRouteImport.update({
-    id: '/api/public/hooks/paper-execute',
-    path: '/api/public/hooks/paper-execute',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksComputeSignalsRoute =
-  ApiPublicHooksComputeSignalsRouteImport.update({
-    id: '/api/public/hooks/compute-signals',
-    path: '/api/public/hooks/compute-signals',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute

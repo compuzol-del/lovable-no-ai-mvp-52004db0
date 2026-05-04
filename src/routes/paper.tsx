@@ -89,6 +89,24 @@ function PaperPage() {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [filterFrom, setFilterFrom] = useState<string>("");
+  const [filterTo, setFilterTo] = useState<string>("");
+  const [filterResult, setFilterResult] = useState<"all" | "win" | "loss">("all");
+
+  const closedFiltered = closed.filter((p) => {
+    const pnl = Number(p.pnl_usd ?? 0);
+    if (filterResult === "win" && pnl <= 0) return false;
+    if (filterResult === "loss" && pnl >= 0) return false;
+    if (p.closed_at) {
+      const t = new Date(p.closed_at).getTime();
+      if (filterFrom && t < new Date(filterFrom).getTime()) return false;
+      if (filterTo && t > new Date(filterTo).getTime() + 86400000) return false;
+    }
+    return true;
+  });
+  const filteredPnl = closedFiltered.reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
+  const filteredWins = closedFiltered.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
+  const filteredWinRate = closedFiltered.length ? (filteredWins / closedFiltered.length) * 100 : 0;
 
   async function load() {
     const [{ data: o }, { data: c }, { data: cfg }] = await Promise.all([

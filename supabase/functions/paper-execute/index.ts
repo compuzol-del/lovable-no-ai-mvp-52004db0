@@ -51,8 +51,8 @@ function sizeForScore(score: number): number {
 // Dynamic TP/SL by entry price tier
 function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string } {
   if (entry < 0.20) return { tpPct: 50, slPct: -30, tier: "low" };
-  if (entry > 0.60) return { tpPct: 15, slPct: -15, tier: "high" };
-  return { tpPct: 25, slPct: -20, tier: "mid" };
+  if (entry > 0.60) return { tpPct: 15, slPct: -10, tier: "high" };
+  return { tpPct: 25, slPct: -15, tier: "mid" };
 }
 
 function buildReason(s: any): string {

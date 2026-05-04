@@ -277,6 +277,7 @@ export type Database = {
           min_score: number
           reversal_buy_bonus: boolean
           sl_pct: number
+          starting_budget_usd: number
           time_stop_hours: number
           tp_pct: number
           updated_at: string
@@ -296,6 +297,7 @@ export type Database = {
           min_score?: number
           reversal_buy_bonus?: boolean
           sl_pct?: number
+          starting_budget_usd?: number
           time_stop_hours?: number
           tp_pct?: number
           updated_at?: string
@@ -315,6 +317,7 @@ export type Database = {
           min_score?: number
           reversal_buy_bonus?: boolean
           sl_pct?: number
+          starting_budget_usd?: number
           time_stop_hours?: number
           tp_pct?: number
           updated_at?: string

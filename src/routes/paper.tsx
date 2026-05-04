@@ -214,16 +214,16 @@ function PaperPage() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-base">טבלת רווח והפסד</CardTitle></CardHeader>
               <CardContent className="p-0 overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-fixed">
                   <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
-                      <th className="text-right p-2">שוק</th>
-                      <th className="text-right p-2">סטטוס</th>
-                      <th className="text-right p-2">Size</th>
-                      <th className="text-right p-2">כניסה</th>
-                      <th className="text-right p-2">נוכחי/יציאה</th>
-                      <th className="text-right p-2">P&L $</th>
-                      <th className="text-right p-2">P&L %</th>
+                      <th className="text-right p-2 w-[28%]">שוק</th>
+                      <th className="text-center p-2 w-[14%]">סטטוס</th>
+                      <th className="text-center p-2 w-[10%]">Size</th>
+                      <th className="text-center p-2 w-[10%]">כניסה</th>
+                      <th className="text-center p-2 w-[14%]">נוכחי/יציאה</th>
+                      <th className="text-center p-2 w-[12%]">P&L $</th>
+                      <th className="text-center p-2 w-[12%]">P&L %</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -241,13 +241,13 @@ function PaperPage() {
                         : Number(p.pnl_pct ?? 0);
                       return (
                         <tr key={p.id} className="border-t">
-                          <td className="p-2 max-w-[200px] truncate">{p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}</td>
-                          <td className="p-2"><Badge variant={isOpen ? "default" : "outline"} className="text-xs">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge></td>
-                          <td className="p-2">${Number(p.size_usd).toFixed(0)}</td>
-                          <td className="p-2">{Number(p.entry_price).toFixed(3)}</td>
-                          <td className="p-2">{Number(price).toFixed(3)}</td>
-                          <td className={`p-2 font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
-                          <td className={`p-2 font-medium ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</td>
+                          <td className="p-2 truncate text-right">{p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}</td>
+                          <td className="p-2 text-center"><Badge variant={isOpen ? "default" : "outline"} className="text-xs">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge></td>
+                          <td className="p-2 text-center">${Number(p.size_usd).toFixed(0)}</td>
+                          <td className="p-2 text-center">{Number(p.entry_price).toFixed(3)}</td>
+                          <td className="p-2 text-center">{Number(price).toFixed(3)}</td>
+                          <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
+                          <td className={`p-2 text-center font-medium ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</td>
                         </tr>
                       );
                     })}

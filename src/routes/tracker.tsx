@@ -90,7 +90,7 @@ function TrackerPage() {
   async function triggerScan() {
     setScanning(true);
     try {
-      await fetch("/api/public/hooks/scan-wallets", { method: "POST" });
+      await supabase.functions.invoke("scan-wallets");
       await load();
     } finally {
       setScanning(false);

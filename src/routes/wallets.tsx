@@ -48,6 +48,7 @@ function WalletsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
 
   async function load() {
@@ -88,6 +89,25 @@ function WalletsPage() {
     }
   }
 
+  async function scanNew() {
+    setScanning(true);
+    setRefreshMsg("סורק לוויתנים חדשים…");
+    try {
+      const { data: j, error } = await supabase.functions.invoke("discover-whales", {
+        body: { wantNew: 20 },
+      });
+      if (error) throw error;
+      setRefreshMsg(`נוספו ${j.inserted} לוויתנים חדשים. מחשב איכות…`);
+      const { data: r } = await supabase.functions.invoke("refresh-whale-performance");
+      setRefreshMsg(`נוספו ${j.inserted} חדשים, דורגו ${r?.processed ?? 0} ארנקים`);
+      await load();
+    } catch (e: any) {
+      setRefreshMsg(`שגיאה: ${e.message}`);
+    } finally {
+      setScanning(false);
+    }
+  }
+
   const tierCounts = rows.reduce<Record<string, number>>((acc, r) => {
     acc[r.quality_tier] = (acc[r.quality_tier] || 0) + 1;
     return acc;
@@ -95,9 +115,10 @@ function WalletsPage() {
 
   const [tab, setTab] = useState("passing");
   const passing = rows.filter((r) => r.is_active && ["S", "A", "B"].includes(r.quality_tier));
-  const excluded = rows.filter((r) => r.quality_tier === "EXCLUDED");
-  const other = rows.filter((r) => !passing.includes(r) && !excluded.includes(r));
-  const visible = tab === "passing" ? passing : tab === "excluded" ? excluded : tab === "all" ? rows : other;
+  const other = rows.filter(
+    (r) => !passing.includes(r) && r.quality_tier !== "EXCLUDED",
+  );
+  const visible = tab === "passing" ? passing : other;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -107,16 +128,22 @@ function WalletsPage() {
           <div>
             <h1 className="text-2xl font-bold">🐋 לווייתנים</h1>
             <p className="text-sm text-muted-foreground">
-              סה"כ {rows.length} · עוברים סינון: {passing.length} · מוחרגים: {excluded.length}
+              עוברים: {passing.length} · אחר: {other.length}
               {tierCounts.S ? ` · S:${tierCounts.S}` : ""}
               {tierCounts.A ? ` · A:${tierCounts.A}` : ""}
               {tierCounts.B ? ` · B:${tierCounts.B}` : ""}
             </p>
           </div>
-          <Button onClick={refresh} disabled={refreshing} size="sm">
-            <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
-            חישוב איכות
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={scanNew} disabled={scanning || refreshing} size="sm" variant="outline">
+              <RefreshCw className={`h-4 w-4 mr-1 ${scanning ? "animate-spin" : ""}`} />
+              סרוק 20 חדשים
+            </Button>
+            <Button onClick={refresh} disabled={refreshing || scanning} size="sm">
+              <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
+              חישוב איכות
+            </Button>
+          </div>
         </div>
 
         {refreshMsg && <p className="text-xs text-muted-foreground">{refreshMsg}</p>}
@@ -124,9 +151,7 @@ function WalletsPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="passing">עוברים ({passing.length})</TabsTrigger>
-            <TabsTrigger value="excluded">מוחרגים ({excluded.length})</TabsTrigger>
             <TabsTrigger value="other">אחר ({other.length})</TabsTrigger>
-            <TabsTrigger value="all">הכול ({rows.length})</TabsTrigger>
           </TabsList>
           <TabsContent value={tab}>
             <Card>

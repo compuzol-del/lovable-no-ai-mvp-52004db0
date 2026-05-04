@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       const lastTradeTs = trades.reduce((m: number, t: any) => Math.max(m, Number(t.timestamp ?? 0)), 0);
 
       const { tier, score } = computeTier({
-        closed: totalDecided, winRate, avgRoi, last30d: last30dTrades, markets: uniqueMarkets,
+        closed: totalDecided, winRate, avgRoi, last30d: last30dTrades, markets: uniqueMarkets, volumeUsd: totalVolume,
       });
 
       await supabaseAdmin.from("whale_performance").upsert({

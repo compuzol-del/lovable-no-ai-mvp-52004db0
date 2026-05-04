@@ -152,34 +152,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/scan-wallets': {
-      id: '/api/public/hooks/scan-wallets'
-      path: '/api/public/hooks/scan-wallets'
-      fullPath: '/api/public/hooks/scan-wallets'
-      preLoaderRoute: typeof ApiPublicHooksScanWalletsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/refresh-whale-performance': {
-      id: '/api/public/hooks/refresh-whale-performance'
-      path: '/api/public/hooks/refresh-whale-performance'
-      fullPath: '/api/public/hooks/refresh-whale-performance'
-      preLoaderRoute: typeof ApiPublicHooksRefreshWhalePerformanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/paper-execute': {
-      id: '/api/public/hooks/paper-execute'
-      path: '/api/public/hooks/paper-execute'
-      fullPath: '/api/public/hooks/paper-execute'
-      preLoaderRoute: typeof ApiPublicHooksPaperExecuteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/compute-signals': {
-      id: '/api/public/hooks/compute-signals'
-      path: '/api/public/hooks/compute-signals'
-      fullPath: '/api/public/hooks/compute-signals'
-      preLoaderRoute: typeof ApiPublicHooksComputeSignalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -190,21 +162,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignalsRoute: SignalsRoute,
   TrackerRoute: TrackerRoute,
   WalletsRoute: WalletsRoute,
-  ApiPublicHooksComputeSignalsRoute: ApiPublicHooksComputeSignalsRoute,
-  ApiPublicHooksPaperExecuteRoute: ApiPublicHooksPaperExecuteRoute,
-  ApiPublicHooksRefreshWhalePerformanceRoute:
-    ApiPublicHooksRefreshWhalePerformanceRoute,
-  ApiPublicHooksScanWalletsRoute: ApiPublicHooksScanWalletsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

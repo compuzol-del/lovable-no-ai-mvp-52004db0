@@ -190,12 +190,13 @@ function PaperPage() {
             const budget = Number(config?.starting_budget_usd ?? 1000);
             const totalPnl = openPnl + closedPnl;
             const equity = budget + totalPnl;
+            const available = budget + closedPnl - totalOpenCost;
             const totalPct = (totalPnl / budget) * 100;
             return (
               <>
-                <StatCard label={`הון נוכחי (מתוך $${budget.toFixed(0)})`} value={`$${equity.toFixed(2)}`} color={pnlColor(totalPnl)} />
-                <StatCard label="P&L כללי" value={`${totalPnl >= 0 ? "+" : ""}$${totalPnl.toFixed(2)} (${totalPct >= 0 ? "+" : ""}${totalPct.toFixed(1)}%)`} color={pnlColor(totalPnl)} />
-                <StatCard label={`פתוח: ${open.length} · P&L`} value={`${openPnl >= 0 ? "+" : ""}$${openPnl.toFixed(2)}`} color={pnlColor(openPnl)} />
+                <StatCard label={`💵 זמין (מתוך $${budget.toFixed(0)})`} value={`$${available.toFixed(2)}`} color={available < budget ? "text-orange-500" : ""} />
+                <StatCard label={`🔒 נעול בפוזיציות (${open.length})`} value={`$${totalOpenCost.toFixed(2)}`} color="text-muted-foreground" />
+                <StatCard label="הון כולל (Equity)" value={`$${equity.toFixed(2)} (${totalPct >= 0 ? "+" : ""}${totalPct.toFixed(1)}%)`} color={pnlColor(totalPnl)} />
                 <StatCard label={`סגור: ${closed.length} · Win ${winRate.toFixed(0)}%`} value={`${closedPnl >= 0 ? "+" : ""}$${closedPnl.toFixed(2)}`} color={pnlColor(closedPnl)} />
               </>
             );

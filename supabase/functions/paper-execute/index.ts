@@ -190,6 +190,30 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // Cooldown: don't re-enter same market right after a recent close
+      // - WHALE_REVERSAL / STOP_LOSS / BREAKEVEN_STOP → 6h cooldown (whales bailed, don't chase)
+      // - TIME_STOP → 3h cooldown
+      // - TAKE_PROFIT → 1h cooldown (positive, but avoid immediate re-entry at higher price)
+      const { data: lastClosed } = await supabaseAdmin
+        .from("paper_positions")
+        .select("exit_reason, closed_at")
+        .eq("condition_id", s.condition_id)
+        .eq("status", "CLOSED")
+        .order("closed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastClosed?.closed_at) {
+        const cooldownHours =
+          lastClosed.exit_reason === "TAKE_PROFIT" ? 1 :
+          lastClosed.exit_reason === "TIME_STOP" ? 3 : 6;
+        const ageMs = Date.now() - new Date(lastClosed.closed_at).getTime();
+        if (ageMs < cooldownHours * 3600 * 1000) {
+          const minsLeft = Math.round((cooldownHours * 3600 * 1000 - ageMs) / 60000);
+          skipped.push({ condition_id: s.condition_id, why: `cooldown ${lastClosed.exit_reason} ${minsLeft}m left` });
+          continue;
+        }
+      }
+
       const meta = await fetchMarketMeta(s.condition_id);
       if (meta) {
         if (minVol > 0 && meta.volume < minVol) {

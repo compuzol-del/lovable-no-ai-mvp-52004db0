@@ -244,10 +244,10 @@ Deno.serve(async (req) => {
       }
 
       // Dynamic TP/SL by entry price tier (or fall back to config flat values)
-      const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat" };
+      const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat", maxHours: Number(cfg.time_stop_hours) };
 
-      // Dynamic time-stop: min(config hours, 25% of time-to-resolution)
-      let timeStopHours = Number(cfg.time_stop_hours);
+      // Dynamic time-stop: min(config hours, tier max, 25% of time-to-resolution)
+      let timeStopHours = Math.min(Number(cfg.time_stop_hours), tier.maxHours);
       let ttrHours: number | null = null;
       if (useDynTime && meta?.endDate) {
         const ttrMs = new Date(meta.endDate).getTime() - Date.now();
@@ -255,6 +255,13 @@ Deno.serve(async (req) => {
           ttrHours = ttrMs / 3600000;
           timeStopHours = Math.max(2, Math.min(timeStopHours, ttrHours * 0.25));
         }
+      }
+
+      // Gap-risk filter: high-tier (entry > 0.60) on markets resolving within 12h
+      // are prone to sudden price gaps around events (goals, decisions). Skip them.
+      if (tier.tier === "high" && ttrHours != null && ttrHours < 12) {
+        skipped.push({ condition_id: s.condition_id, why: `gap risk: high tier + ttr ${ttrHours.toFixed(1)}h` });
+        continue;
       }
 
       const sizeUsd = sizeForScore(Number(s.score));

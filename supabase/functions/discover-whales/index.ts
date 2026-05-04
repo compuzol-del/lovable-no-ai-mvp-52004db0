@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     }
 
     const ranked = [...seen.entries()]
-      .sort((a, b) => b[1].amount - a[1].amount)
+      .sort((a, b) => b[1].score - a[1].score)
       .slice(0, TARGET);
 
     let inserted = 0;

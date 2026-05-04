@@ -190,7 +190,7 @@ function PaperPage() {
             const budget = Number(config?.starting_budget_usd ?? 1000);
             const totalPnl = openPnl + closedPnl;
             const equity = budget + totalPnl;
-            const available = budget + closedPnl - totalOpenCost;
+            const available = equity - totalOpenCost;
             const totalPct = (totalPnl / budget) * 100;
             return (
               <>

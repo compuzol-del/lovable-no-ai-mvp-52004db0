@@ -152,6 +152,7 @@ function PaperPage() {
               <Badge variant={config.enabled ? "default" : "destructive"}>
                 <Power className="h-3 w-3 mr-1" /> {config.enabled ? "פעיל" : "כבוי"}
               </Badge>
+              <span>💰 תקציב התחלתי: <b className="text-primary">${Number(config.starting_budget_usd ?? 1000).toFixed(0)}</b></span>
               <span>Min score: <b>{config.min_score}</b></span>
               <span>TP: <b className="text-green-500">+{config.tp_pct}%</b></span>
               <span>SL: <b className="text-red-500">{config.sl_pct}%</b></span>

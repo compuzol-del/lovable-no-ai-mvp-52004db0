@@ -54,10 +54,6 @@ export interface FileRoutesByFullPath {
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
-  '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
-  '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
-  '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -66,10 +62,6 @@ export interface FileRoutesByTo {
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
-  '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
-  '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
-  '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,10 +71,6 @@ export interface FileRoutesById {
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
-  '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
-  '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
-  '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath

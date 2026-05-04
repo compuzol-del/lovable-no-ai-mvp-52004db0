@@ -48,6 +48,7 @@ type Config = {
   time_stop_hours: number;
   breakeven_trigger_pct: number;
   whale_reversal_exit: boolean;
+  starting_budget_usd: number;
 };
 
 export const Route = createFileRoute("/paper")({

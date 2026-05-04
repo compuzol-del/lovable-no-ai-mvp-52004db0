@@ -24,7 +24,7 @@ function LogicPage() {
           <CardContent className="space-y-2 text-sm">
             <p>הבוט עוקב אחרי כל ארנק בטבלה <code>tracked_wallets</code> שעמד בסינון איכות. סינון אוטומטי יומי (04:00):</p>
             <ul className="list-disc pr-6 space-y-1">
-              <li><b>EXCLUDED (מוחרג):</b> פחות מ-25 פוזיציות סגורות, או win-rate מתחת ל-50%. מושבת אוטומטית.</li>
+              <li><b>EXCLUDED (מוחרג):</b> פחות מ-25 פוזיציות סגורות + win-rate &lt;50%. <b>חריג:</b> ארנקים פעילים מאוד (≥30 trades ב-30 יום + volume ≥$100K) לא מוחרגים גם בלי closed positions.</li>
               <li><b>S-Tier:</b> ציון איכות ≥75 + win-rate גבוה + ROI חיובי + פעיל ב-30 ימים אחרונים.</li>
               <li><b>A-Tier:</b> ≥60. <b>B-Tier:</b> ≥45. <b>C-Tier:</b> &lt;45.</li>
               <li>הציון משקלל: גודל מדגם, win-rate, ROI ממוצע, פעילות אחרונה, פיזור על שווקים שונים.</li>

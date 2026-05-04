@@ -267,12 +267,50 @@ function PaperPage() {
           </TabsContent>
 
           <TabsContent value="closed" className="space-y-3">
-            {!loading && closed.length === 0 && (
+            <Card>
+              <CardContent className="p-3 flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">מתאריך</label>
+                  <input
+                    type="date"
+                    value={filterFrom}
+                    onChange={(e) => setFilterFrom(e.target.value)}
+                    className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">עד תאריך</label>
+                  <input
+                    type="date"
+                    value={filterTo}
+                    onChange={(e) => setFilterTo(e.target.value)}
+                    className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">תוצאה</label>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant={filterResult === "all" ? "default" : "outline"} onClick={() => setFilterResult("all")}>הכל</Button>
+                    <Button size="sm" variant={filterResult === "win" ? "default" : "outline"} onClick={() => setFilterResult("win")} className={filterResult === "win" ? "" : "text-green-500"}>רווח</Button>
+                    <Button size="sm" variant={filterResult === "loss" ? "default" : "outline"} onClick={() => setFilterResult("loss")} className={filterResult === "loss" ? "" : "text-red-500"}>הפסד</Button>
+                  </div>
+                </div>
+                {(filterFrom || filterTo || filterResult !== "all") && (
+                  <Button size="sm" variant="ghost" onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterResult("all"); }}>נקה</Button>
+                )}
+                <div className="ml-auto text-sm flex flex-wrap gap-3">
+                  <span>סה"כ: <b>{closedFiltered.length}</b></span>
+                  <span>Win: <b>{filteredWinRate.toFixed(0)}%</b></span>
+                  <span className={pnlColor(filteredPnl)}>P&L: <b>{filteredPnl >= 0 ? "+" : ""}${filteredPnl.toFixed(2)}</b></span>
+                </div>
+              </CardContent>
+            </Card>
+            {!loading && closedFiltered.length === 0 && (
               <Card><CardContent className="p-6 text-center text-muted-foreground">
-                עוד לא נסגרו פוזיציות.
+                אין פוזיציות שתואמות את הפילטר.
               </CardContent></Card>
             )}
-            {closed.map((p) => <PositionCard key={p.id} p={p} isOpen={false} />)}
+            {closedFiltered.map((p) => <PositionCard key={p.id} p={p} isOpen={false} />)}
           </TabsContent>
         </Tabs>
       </div>

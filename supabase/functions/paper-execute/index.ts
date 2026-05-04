@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
   for (const p of openPos || []) {
     const cur = await fetchPrice(p.asset);
     let exitReason: string | null = null;
-    const exitPrice = cur ?? Number(p.current_price ?? p.entry_price);
+    let exitPrice = cur ?? Number(p.current_price ?? p.entry_price);
     const entry = Number(p.entry_price);
     const peak = Math.max(Number(p.peak_price ?? entry), cur ?? entry);
     let slPrice = Number(p.sl_price);

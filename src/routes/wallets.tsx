@@ -77,8 +77,8 @@ function WalletsPage() {
     setRefreshing(true);
     setRefreshMsg("מעדכן… זה יכול לקחת 1-3 דקות");
     try {
-      const r = await fetch("/api/public/hooks/refresh-whale-performance", { method: "POST" });
-      const j = await r.json();
+      const { data: j, error } = await supabase.functions.invoke("refresh-whale-performance");
+      if (error) throw error;
       setRefreshMsg(`עודכנו ${j.processed} ארנקים`);
       await load();
     } catch (e: any) {

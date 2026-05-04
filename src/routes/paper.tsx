@@ -111,8 +111,8 @@ function PaperPage() {
   async function runNow() {
     setRunning(true);
     try {
-      const r = await fetch("/api/public/hooks/paper-execute", { method: "POST" });
-      const j = await r.json();
+      const { data: j, error } = await supabase.functions.invoke("paper-execute");
+      if (error) throw error;
       toast.success(`Opened ${j.opened} · Closed ${j.closed} · Skipped ${j.skipped}`);
       await load();
     } catch (e: any) {

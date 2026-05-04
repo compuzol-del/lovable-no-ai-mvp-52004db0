@@ -15,10 +15,6 @@ import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as PaperRouteImport } from './routes/paper'
 import { Route as LogicRouteImport } from './routes/logic'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiPublicHooksScanWalletsRouteImport } from './routes/api/public/hooks/scan-wallets'
-import { Route as ApiPublicHooksRefreshWhalePerformanceRouteImport } from './routes/api/public/hooks/refresh-whale-performance'
-import { Route as ApiPublicHooksPaperExecuteRouteImport } from './routes/api/public/hooks/paper-execute'
-import { Route as ApiPublicHooksComputeSignalsRouteImport } from './routes/api/public/hooks/compute-signals'
 
 const WalletsRoute = WalletsRouteImport.update({
   id: '/wallets',
@@ -50,30 +46,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksScanWalletsRoute =
-  ApiPublicHooksScanWalletsRouteImport.update({
-    id: '/api/public/hooks/scan-wallets',
-    path: '/api/public/hooks/scan-wallets',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksRefreshWhalePerformanceRoute =
-  ApiPublicHooksRefreshWhalePerformanceRouteImport.update({
-    id: '/api/public/hooks/refresh-whale-performance',
-    path: '/api/public/hooks/refresh-whale-performance',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPaperExecuteRoute =
-  ApiPublicHooksPaperExecuteRouteImport.update({
-    id: '/api/public/hooks/paper-execute',
-    path: '/api/public/hooks/paper-execute',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksComputeSignalsRoute =
-  ApiPublicHooksComputeSignalsRouteImport.update({
-    id: '/api/public/hooks/compute-signals',
-    path: '/api/public/hooks/compute-signals',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,10 +54,6 @@ export interface FileRoutesByFullPath {
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
-  '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
-  '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
-  '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,10 +62,6 @@ export interface FileRoutesByTo {
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
-  '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
-  '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
-  '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,10 +71,6 @@ export interface FileRoutesById {
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
-  '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
-  '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
-  '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,10 +81,6 @@ export interface FileRouteTypes {
     | '/signals'
     | '/tracker'
     | '/wallets'
-    | '/api/public/hooks/compute-signals'
-    | '/api/public/hooks/paper-execute'
-    | '/api/public/hooks/refresh-whale-performance'
-    | '/api/public/hooks/scan-wallets'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,10 +89,6 @@ export interface FileRouteTypes {
     | '/signals'
     | '/tracker'
     | '/wallets'
-    | '/api/public/hooks/compute-signals'
-    | '/api/public/hooks/paper-execute'
-    | '/api/public/hooks/refresh-whale-performance'
-    | '/api/public/hooks/scan-wallets'
   id:
     | '__root__'
     | '/'
@@ -145,10 +97,6 @@ export interface FileRouteTypes {
     | '/signals'
     | '/tracker'
     | '/wallets'
-    | '/api/public/hooks/compute-signals'
-    | '/api/public/hooks/paper-execute'
-    | '/api/public/hooks/refresh-whale-performance'
-    | '/api/public/hooks/scan-wallets'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,10 +106,6 @@ export interface RootRouteChildren {
   SignalsRoute: typeof SignalsRoute
   TrackerRoute: typeof TrackerRoute
   WalletsRoute: typeof WalletsRoute
-  ApiPublicHooksComputeSignalsRoute: typeof ApiPublicHooksComputeSignalsRoute
-  ApiPublicHooksPaperExecuteRoute: typeof ApiPublicHooksPaperExecuteRoute
-  ApiPublicHooksRefreshWhalePerformanceRoute: typeof ApiPublicHooksRefreshWhalePerformanceRoute
-  ApiPublicHooksScanWalletsRoute: typeof ApiPublicHooksScanWalletsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -208,34 +152,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/scan-wallets': {
-      id: '/api/public/hooks/scan-wallets'
-      path: '/api/public/hooks/scan-wallets'
-      fullPath: '/api/public/hooks/scan-wallets'
-      preLoaderRoute: typeof ApiPublicHooksScanWalletsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/refresh-whale-performance': {
-      id: '/api/public/hooks/refresh-whale-performance'
-      path: '/api/public/hooks/refresh-whale-performance'
-      fullPath: '/api/public/hooks/refresh-whale-performance'
-      preLoaderRoute: typeof ApiPublicHooksRefreshWhalePerformanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/paper-execute': {
-      id: '/api/public/hooks/paper-execute'
-      path: '/api/public/hooks/paper-execute'
-      fullPath: '/api/public/hooks/paper-execute'
-      preLoaderRoute: typeof ApiPublicHooksPaperExecuteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/compute-signals': {
-      id: '/api/public/hooks/compute-signals'
-      path: '/api/public/hooks/compute-signals'
-      fullPath: '/api/public/hooks/compute-signals'
-      preLoaderRoute: typeof ApiPublicHooksComputeSignalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -246,21 +162,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignalsRoute: SignalsRoute,
   TrackerRoute: TrackerRoute,
   WalletsRoute: WalletsRoute,
-  ApiPublicHooksComputeSignalsRoute: ApiPublicHooksComputeSignalsRoute,
-  ApiPublicHooksPaperExecuteRoute: ApiPublicHooksPaperExecuteRoute,
-  ApiPublicHooksRefreshWhalePerformanceRoute:
-    ApiPublicHooksRefreshWhalePerformanceRoute,
-  ApiPublicHooksScanWalletsRoute: ApiPublicHooksScanWalletsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -10,12 +10,16 @@ const corsHeaders = {
 const TARGET = 200;
 const MIN_VOLUME_USD = 250_000; // proxy for "thousands of trades" in last 90d
 const MIN_PROFIT_USD = 5_000;   // only profitable wallets from profit board
-// Pull from multiple windows for breadth; profit-first prioritization.
+// API caps results at ~50 per call; spread across multiple windows for breadth.
 const SOURCES = [
-  { board: "profit", window: "month", priority: 3 },
-  { board: "profit", window: "all",   priority: 3 },
-  { board: "volume", window: "month", priority: 1 },
-  { board: "volume", window: "all",   priority: 1 },
+  { board: "profit", window: "1d",  priority: 3 },
+  { board: "profit", window: "7d",  priority: 3 },
+  { board: "profit", window: "30d", priority: 3 },
+  { board: "profit", window: "all", priority: 3 },
+  { board: "volume", window: "1d",  priority: 1 },
+  { board: "volume", window: "7d",  priority: 1 },
+  { board: "volume", window: "30d", priority: 1 },
+  { board: "volume", window: "all", priority: 1 },
 ];
 
 async function fetchLeaderboard(board: string, window: string) {

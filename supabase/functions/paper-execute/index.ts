@@ -49,10 +49,10 @@ function sizeForScore(score: number): number {
 }
 
 // Dynamic TP/SL by entry price tier
-function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string } {
-  if (entry < 0.20) return { tpPct: 50, slPct: -30, tier: "low" };
-  if (entry > 0.60) return { tpPct: 15, slPct: -10, tier: "high" };
-  return { tpPct: 25, slPct: -15, tier: "mid" };
+function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string; maxHours: number } {
+  if (entry < 0.20) return { tpPct: 50, slPct: -30, tier: "low", maxHours: 24 };
+  if (entry > 0.60) return { tpPct: 15, slPct: -10, tier: "high", maxHours: 6 };
+  return { tpPct: 25, slPct: -15, tier: "mid", maxHours: 12 };
 }
 
 function buildReason(s: any): string {

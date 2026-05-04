@@ -179,7 +179,7 @@ function PaperPage() {
               <span>Time-stop: <b>{config.time_stop_hours}h</b></span>
               <span>Trailing→BE: <b className="text-blue-500">+{config.breakeven_trigger_pct}%</b></span>
               <span>Whale-reversal: <b className={config.whale_reversal_exit ? "text-green-500" : "text-muted-foreground"}>{config.whale_reversal_exit ? "ON" : "OFF"}</b></span>
-              <span className="text-muted-foreground">Sizing: 75-84→$100 · 85-94→$175 · 95+→$300</span>
+              <span className="text-muted-foreground">Sizing: 75-84→$30 · 85-94→$60 · 95+→$90 <span className="opacity-60">(prev: $100/$175/$300)</span></span>
             </CardContent>
           </Card>
         )}

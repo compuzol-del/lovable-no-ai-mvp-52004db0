@@ -62,9 +62,9 @@ function LogicPage() {
             </ul>
             <p className="font-semibold mt-2">גודל פוזיציה לפי ציון:</p>
             <ul className="list-disc pr-6 space-y-1">
-              <li>75-84 → $100</li>
-              <li>85-94 → $175</li>
-              <li>95+ → $300</li>
+              <li>75-84 → $30</li>
+              <li>85-94 → $60</li>
+              <li>95+ → $90</li>
             </ul>
           </CardContent>
         </Card>

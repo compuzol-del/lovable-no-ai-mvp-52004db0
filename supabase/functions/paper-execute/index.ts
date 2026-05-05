@@ -265,8 +265,9 @@ Deno.serve(async (req) => {
       }
 
       const entry = (await fetchPrice(s.asset)) ?? Number(s.current_price ?? s.avg_price);
-      if (!entry || entry <= 0.01 || entry >= 0.99) {
-        skipped.push({ condition_id: s.condition_id, why: `bad entry ${entry}` });
+      // Cap entry at 0.92 — above this, the 0.99 TP cap leaves too little upside vs SL risk
+      if (!entry || entry <= 0.05 || entry >= 0.92) {
+        skipped.push({ condition_id: s.condition_id, why: `bad entry ${entry} (must be 0.05-0.92)` });
         continue;
       }
 

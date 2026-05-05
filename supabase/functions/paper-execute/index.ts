@@ -154,8 +154,12 @@ Deno.serve(async (req) => {
     }
 
     if (exitReason) {
-      // Realistic stop-loss fill: assume sell near SL with up to 5% slippage,
-      // not at whatever current price happens to be (which can gap far below SL).
+      // If live price unavailable (market closed/resolved), resolve via Gamma outcome prices.
+      if (cur == null) {
+        const resolved = await resolveExitPrice(p);
+        if (resolved != null) exitPrice = resolved;
+      }
+      // Realistic stop-loss fill: assume sell near SL with up to 5% slippage.
       if ((exitReason === "STOP_LOSS" || exitReason === "BREAKEVEN_STOP") && cur != null) {
         const worstAcceptable = slPrice * 0.95;
         exitPrice = Math.max(worstAcceptable, Math.min(slPrice, cur));

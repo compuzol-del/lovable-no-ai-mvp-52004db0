@@ -240,6 +240,13 @@ function WalletsPage() {
                 )}
               </CardContent>
             </Card>
+            {allVisible.length > PAGE_SIZE && (
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <Button size="sm" variant="outline" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>הקודם</Button>
+                <span className="text-xs text-muted-foreground">עמוד {currentPage} מתוך {totalPages}</span>
+                <Button size="sm" variant="outline" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>הבא</Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

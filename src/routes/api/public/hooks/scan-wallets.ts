@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "../../../../integrations/supabase/client.server";
 
 const POLYMARKET_DATA_API = "https://data-api.polymarket.com";
 

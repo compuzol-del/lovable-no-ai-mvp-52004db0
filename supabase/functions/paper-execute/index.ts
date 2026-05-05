@@ -284,10 +284,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Gap-risk filter: high-tier (entry > 0.60) on markets resolving within 12h
-      // are prone to sudden price gaps around events (goals, decisions). Skip them.
-      if (tier.tier === "high" && ttrHours != null && ttrHours < 12) {
-        skipped.push({ condition_id: s.condition_id, why: `gap risk: high tier + ttr ${ttrHours.toFixed(1)}h` });
+      // Gap-risk filter (softened): only skip high-tier (entry > 0.60) on markets
+      // resolving within 4h AND with very high entry (> 0.80) — the riskiest combo.
+      if (tier.tier === "high" && entry > 0.80 && ttrHours != null && ttrHours < 4) {
+        skipped.push({ condition_id: s.condition_id, why: `gap risk: entry ${entry.toFixed(2)} + ttr ${ttrHours.toFixed(1)}h` });
         continue;
       }
 

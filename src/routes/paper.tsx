@@ -92,6 +92,8 @@ function PaperPage() {
   const [filterFrom, setFilterFrom] = useState<string>("");
   const [filterTo, setFilterTo] = useState<string>("");
   const [filterResult, setFilterResult] = useState<"all" | "win" | "loss">("all");
+  const [pnlPage, setPnlPage] = useState(1);
+  const PNL_PAGE_SIZE = 20;
 
   const closedFiltered = closed.filter((p) => {
     const pnl = Number(p.pnl_usd ?? 0);
@@ -213,84 +215,102 @@ function PaperPage() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-base">טבלת רווח והפסד</CardTitle></CardHeader>
               <CardContent className="p-0">
-                {/* Desktop table */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-sm table-fixed">
-                    <thead className="bg-muted/50 text-xs text-muted-foreground">
-                      <tr>
-                        <th className="text-right p-2 w-[28%]">שוק</th>
-                        <th className="text-center p-2 w-[14%]">סטטוס</th>
-                        <th className="text-center p-2 w-[10%]">Size</th>
-                        <th className="text-center p-2 w-[10%]">כניסה</th>
-                        <th className="text-center p-2 w-[14%]">נוכחי/יציאה</th>
-                        <th className="text-center p-2 w-[12%]">P&L $</th>
-                        <th className="text-center p-2 w-[12%]">P&L %</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...open, ...closed].length === 0 && (
-                        <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">אין נתונים עדיין</td></tr>
-                      )}
-                      {[...open, ...closed].map((p) => {
-                        const isOpen = p.status === "OPEN";
-                        const price = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
-                        const pnlUsd = isOpen
-                          ? (Number(price) - Number(p.entry_price)) * Number(p.shares)
-                          : Number(p.pnl_usd ?? 0);
-                        const pnlPct = isOpen
-                          ? ((Number(price) - Number(p.entry_price)) / Number(p.entry_price)) * 100
-                          : Number(p.pnl_pct ?? 0);
-                        return (
-                          <tr key={p.id} className="border-t">
-                            <td className="p-2 truncate text-right">{p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}</td>
-                            <td className="p-2 text-center"><Badge variant={isOpen ? "default" : "outline"} className="text-xs">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge></td>
-                            <td className="p-2 text-center">${Number(p.size_usd).toFixed(0)}</td>
-                            <td className="p-2 text-center">{Number(p.entry_price).toFixed(3)}</td>
-                            <td className="p-2 text-center">{Number(price).toFixed(3)}</td>
-                            <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
-                            <td className={`p-2 text-center font-medium ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile cards */}
-                <div className="md:hidden divide-y">
-                  {[...open, ...closed].length === 0 && (
-                    <div className="p-4 text-center text-muted-foreground text-sm">אין נתונים עדיין</div>
-                  )}
-                  {[...open, ...closed].map((p) => {
-                    const isOpen = p.status === "OPEN";
-                    const price = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
-                    const pnlUsd = isOpen
-                      ? (Number(price) - Number(p.entry_price)) * Number(p.shares)
-                      : Number(p.pnl_usd ?? 0);
-                    const pnlPct = isOpen
-                      ? ((Number(price) - Number(p.entry_price)) / Number(p.entry_price)) * 100
-                      : Number(p.pnl_pct ?? 0);
-                    return (
-                      <div key={p.id} className="p-3 space-y-2">
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="text-sm font-medium flex-1 min-w-0 truncate text-right">
-                            {p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className={`text-sm font-bold ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</div>
-                            <div className={`text-xs ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</div>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          <Badge variant={isOpen ? "default" : "outline"} className="text-[10px]">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge>
-                          <span>Size: <b className="text-foreground">${Number(p.size_usd).toFixed(0)}</b></span>
-                          <span>כניסה: <b className="text-foreground">{Number(p.entry_price).toFixed(3)}</b></span>
-                          <span>{isOpen ? "נוכחי" : "יציאה"}: <b className="text-foreground">{Number(price).toFixed(3)}</b></span>
-                        </div>
+                {(() => {
+                  const all = [...open, ...closed];
+                  const totalPages = Math.max(1, Math.ceil(all.length / PNL_PAGE_SIZE));
+                  const curPage = Math.min(pnlPage, totalPages);
+                  const pageItems = all.slice((curPage - 1) * PNL_PAGE_SIZE, curPage * PNL_PAGE_SIZE);
+                  return (
+                    <>
+                      {/* Desktop table */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-sm table-fixed">
+                          <thead className="bg-muted/50 text-xs text-muted-foreground">
+                            <tr>
+                              <th className="text-right p-2 w-[28%]">שוק</th>
+                              <th className="text-center p-2 w-[14%]">סטטוס</th>
+                              <th className="text-center p-2 w-[10%]">Size</th>
+                              <th className="text-center p-2 w-[10%]">כניסה</th>
+                              <th className="text-center p-2 w-[14%]">נוכחי/יציאה</th>
+                              <th className="text-center p-2 w-[12%]">P&L $</th>
+                              <th className="text-center p-2 w-[12%]">P&L %</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {all.length === 0 && (
+                              <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">אין נתונים עדיין</td></tr>
+                            )}
+                            {pageItems.map((p) => {
+                              const isOpen = p.status === "OPEN";
+                              const price = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
+                              const pnlUsd = isOpen
+                                ? (Number(price) - Number(p.entry_price)) * Number(p.shares)
+                                : Number(p.pnl_usd ?? 0);
+                              const pnlPct = isOpen
+                                ? ((Number(price) - Number(p.entry_price)) / Number(p.entry_price)) * 100
+                                : Number(p.pnl_pct ?? 0);
+                              return (
+                                <tr key={p.id} className="border-t">
+                                  <td className="p-2 truncate text-right">{p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}</td>
+                                  <td className="p-2 text-center"><Badge variant={isOpen ? "default" : "outline"} className="text-xs">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge></td>
+                                  <td className="p-2 text-center">${Number(p.size_usd).toFixed(0)}</td>
+                                  <td className="p-2 text-center">{Number(p.entry_price).toFixed(3)}</td>
+                                  <td className="p-2 text-center">{Number(price).toFixed(3)}</td>
+                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
+                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Mobile cards */}
+                      <div className="md:hidden divide-y">
+                        {all.length === 0 && (
+                          <div className="p-4 text-center text-muted-foreground text-sm">אין נתונים עדיין</div>
+                        )}
+                        {pageItems.map((p) => {
+                          const isOpen = p.status === "OPEN";
+                          const price = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
+                          const pnlUsd = isOpen
+                            ? (Number(price) - Number(p.entry_price)) * Number(p.shares)
+                            : Number(p.pnl_usd ?? 0);
+                          const pnlPct = isOpen
+                            ? ((Number(price) - Number(p.entry_price)) / Number(p.entry_price)) * 100
+                            : Number(p.pnl_pct ?? 0);
+                          return (
+                            <div key={p.id} className="p-3 space-y-2">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="text-sm font-medium flex-1 min-w-0 truncate text-right">
+                                  {p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className={`text-sm font-bold ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</div>
+                                  <div className={`text-xs ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</div>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                <Badge variant={isOpen ? "default" : "outline"} className="text-[10px]">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge>
+                                <span>Size: <b className="text-foreground">${Number(p.size_usd).toFixed(0)}</b></span>
+                                <span>כניסה: <b className="text-foreground">{Number(p.entry_price).toFixed(3)}</b></span>
+                                <span>{isOpen ? "נוכחי" : "יציאה"}: <b className="text-foreground">{Number(price).toFixed(3)}</b></span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {all.length > PNL_PAGE_SIZE && (
+                        <div className="flex items-center justify-center gap-2 p-3 border-t">
+                          <Button size="sm" variant="outline" disabled={curPage <= 1} onClick={() => setPnlPage(curPage - 1)}>הקודם</Button>
+                          <span className="text-xs text-muted-foreground">עמוד {curPage} מתוך {totalPages}</span>
+                          <Button size="sm" variant="outline" disabled={curPage >= totalPages} onClick={() => setPnlPage(curPage + 1)}>הבא</Button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>

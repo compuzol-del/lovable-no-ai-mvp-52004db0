@@ -114,11 +114,17 @@ function WalletsPage() {
   }, {});
 
   const [tab, setTab] = useState("passing");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
   const passing = rows.filter((r) => r.is_active && ["S", "A", "B"].includes(r.quality_tier));
   const other = rows.filter(
     (r) => !passing.includes(r) && r.quality_tier !== "EXCLUDED",
   );
-  const visible = tab === "passing" ? passing : other;
+  const allVisible = tab === "passing" ? passing : other;
+  const totalPages = Math.max(1, Math.ceil(allVisible.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visible = allVisible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [tab]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -234,6 +240,13 @@ function WalletsPage() {
                 )}
               </CardContent>
             </Card>
+            {allVisible.length > PAGE_SIZE && (
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <Button size="sm" variant="outline" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>הקודם</Button>
+                <span className="text-xs text-muted-foreground">עמוד {currentPage} מתוך {totalPages}</span>
+                <Button size="sm" variant="outline" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>הבא</Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

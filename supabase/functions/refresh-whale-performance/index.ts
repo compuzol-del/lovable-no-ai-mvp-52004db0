@@ -83,10 +83,13 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const onlyAddress = url.searchParams.get("address");
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? "10"), 25);
+  const offset = Number(url.searchParams.get("offset") ?? "0");
   const startedAt = Date.now();
 
-  let q = supabaseAdmin.from("tracked_wallets").select("address,label");
+  let q = supabaseAdmin.from("tracked_wallets").select("address,label").order("address");
   if (onlyAddress) q = q.eq("address", onlyAddress);
+  else q = q.range(offset, offset + limit - 1);
   const { data: wallets, error } = await q;
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
 

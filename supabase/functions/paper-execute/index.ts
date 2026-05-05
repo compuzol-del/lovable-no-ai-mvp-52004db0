@@ -22,6 +22,7 @@ async function fetchPrice(asset: string | null): Promise<number | null> {
 
 async function fetchMarketMeta(conditionId: string): Promise<{
   volume: number; liquidity: number; endDate: string | null; eventId: string | null;
+  closed: boolean; outcomes: string[]; outcomePrices: number[];
 } | null> {
   try {
     const r = await fetch(`${POLYMARKET_GAMMA}/markets?condition_ids=${conditionId}`);
@@ -29,17 +30,39 @@ async function fetchMarketMeta(conditionId: string): Promise<{
     const arr = await r.json() as any[];
     const m = Array.isArray(arr) ? arr[0] : null;
     if (!m) return null;
-    // Prefer volume24hr where available, fall back to all-time volume
     const vol = Number(m.volume24hr ?? m.volumeNum ?? m.volume ?? 0);
     const liq = Number(m.liquidityNum ?? m.liquidity ?? 0);
+    const parseArr = (v: any): any[] => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+      return [];
+    };
+    const outcomes = parseArr(m.outcomes).map(String);
+    const outcomePrices = parseArr(m.outcomePrices).map((x: any) => Number(x));
     return {
       volume: vol, liquidity: liq,
       endDate: m.endDate || m.end_date || null,
       eventId: m.eventId || m.event_id || (m.events?.[0]?.id ?? null),
+      closed: !!m.closed,
+      outcomes,
+      outcomePrices,
     };
   } catch {
     return null;
   }
+}
+
+// Resolve the actual exit price when the order book is empty (market closed/resolved).
+// Returns 1.0 if our outcome won, 0.0 if it lost, or last-known current_price otherwise.
+async function resolveExitPrice(p: any): Promise<number | null> {
+  const meta = await fetchMarketMeta(p.condition_id);
+  if (meta && meta.closed && meta.outcomes.length && meta.outcomePrices.length === meta.outcomes.length) {
+    const idx = meta.outcomes.findIndex(
+      (o) => o.toLowerCase() === String(p.outcome ?? "").toLowerCase(),
+    );
+    if (idx >= 0) return meta.outcomePrices[idx];
+  }
+  return p.current_price != null ? Number(p.current_price) : null;
 }
 
 function sizeForScore(score: number): number {
@@ -131,8 +154,12 @@ Deno.serve(async (req) => {
     }
 
     if (exitReason) {
-      // Realistic stop-loss fill: assume sell near SL with up to 5% slippage,
-      // not at whatever current price happens to be (which can gap far below SL).
+      // If live price unavailable (market closed/resolved), resolve via Gamma outcome prices.
+      if (cur == null) {
+        const resolved = await resolveExitPrice(p);
+        if (resolved != null) exitPrice = resolved;
+      }
+      // Realistic stop-loss fill: assume sell near SL with up to 5% slippage.
       if ((exitReason === "STOP_LOSS" || exitReason === "BREAKEVEN_STOP") && cur != null) {
         const worstAcceptable = slPrice * 0.95;
         exitPrice = Math.max(worstAcceptable, Math.min(slPrice, cur));

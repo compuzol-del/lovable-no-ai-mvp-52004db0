@@ -174,9 +174,8 @@ function PaperPage() {
               </Badge>
               <span>💰 תקציב התחלתי: <b className="text-primary">${Number(config.starting_budget_usd ?? 1000).toFixed(0)}</b></span>
               <span>Min score: <b>{config.min_score}</b></span>
-              <span>TP: <b className="text-green-500">+{config.tp_pct}%</b></span>
-              <span>SL: <b className="text-red-500">{config.sl_pct}%</b></span>
-              <span>Time-stop: <b>{config.time_stop_hours}h</b></span>
+              <span className="text-muted-foreground">TP/SL דינמי: low +40/-20 · mid +20/-12 · high +12/-8</span>
+              <span>Time-stop: <b>24h/12h/6h</b></span>
               <span>Trailing→BE: <b className="text-blue-500">+{config.breakeven_trigger_pct}%</b></span>
               <span>Whale-reversal: <b className={config.whale_reversal_exit ? "text-green-500" : "text-muted-foreground"}>{config.whale_reversal_exit ? "ON" : "OFF"}</b></span>
               <span className="text-muted-foreground">Sizing: 75-84→$30 · 85-94→$60 · 95+→$90</span>

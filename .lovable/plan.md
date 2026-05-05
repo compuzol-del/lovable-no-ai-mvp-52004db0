@@ -1,70 +1,62 @@
-## הבעיה
+מטרה
 
-פוזיציה #32 (Cremonese vs Lazio O/U 2.5):
-- כניסה 0.64, SL ב-0.576 (-10%)
-- בפועל נסגרה ב-0.29 → **-54.69%**
+לבצע ניתוח חד-פעמי של 213 הלוייתנים שאנחנו עוקבים אחריהם, להראות עבור כל אחד:
 
-הסיבה: הבוט רץ כל ~2 דק'. בשוק ספורט המחיר קפץ מ-0.66 ל-0.29 בשנייה (גול / החלטה). הבוט סוגר ב-`current_price` של אותו רגע, לא ב-SL.
+- כמה פוזיציות **ספורט** היו לו ב-90 הימים האחרונים
+- אחוז ההצלחה שלו על פוזיציות ספורט (לעומת אחוז ההצלחה הכללי)
+- חלק הספורט מסך הפעילות שלו
 
-זו לא בעיה בחוקים — זו בעיה ב**סימולציית הפילינג** + חשיפה לשווקים עם gap risk גבוה.
+זה ניתוח חקירה — לא תכונת אפליקציה. הפלט יהיה דוח שתוכל להוריד (CSV + סיכום), ובמידה ותרצה — נשתמש בו כדי להחליט אם להוסיף פילטר "no sports" לבוט.
 
-## תיקונים
+## איך נזהה "ספורט"
 
-### 1. `supabase/functions/paper-execute/index.ts` — exit price ריאלי
+שלוש שכבות, בסדר עדיפות:
 
-כשנסגר ב-`STOP_LOSS` או `BREAKEVEN_STOP`, להניח slippage של עד 5% מתחת ל-SL במקום למכור ב-current price:
+1. שדה `category` של ה-market (אם קיים ב-Polymarket Gamma API: `Sports`, `EPL`, `NBA`, `NFL`, `UFC`, `Soccer`, `MLB`, `NHL`, `Tennis`, `F1`, `Boxing` וכד').
+2. אם אין `category`, ננסה לזהות לפי `event_slug` / `slug` עם רשימת מילות מפתח (epl, nba, nfl, ufc, mma, nhl, mlb, tennis, soccer, football, ucl, champions-league, world-cup, boxing, f1, formula, wnba, ncaa).
+3. אם עדיין לא בטוח — נסמן כ-`unknown` (לא יכלל בספירת הספורט).
 
-```ts
-let exitPrice = cur ?? Number(p.current_price ?? p.entry_price);
-if (exitReason === "STOP_LOSS" || exitReason === "BREAKEVEN_STOP") {
-  // assume fill near SL with up to 5% slippage; can't be worse than current price
-  const maxSlippage = slPrice * 0.95;
-  exitPrice = Math.max(maxSlippage, Math.min(slPrice, cur ?? slPrice));
-}
-```
+## איך נמדוד "הצלחה"
 
-תוצאה: פוזיציה כמו #32 הייתה נסגרת סביב 0.547 (-14%) במקום -54%.
+- נמשוך מ-`https://data-api.polymarket.com/positions?user=<addr>` את כל הפוזיציות.
+- "סגורה" = `redeemable=true` או `endDate < now` או `size==0`.
+- "מנצחת" = `realizedPnl + cashPnl > 0`.
+- חלון זמן: פוזיציות עם `endDate` ב-90 הימים האחרונים (כי `positions` לא תמיד מחזיר תאריך פתיחה).
+- win-rate = מנצחות / (מנצחות + מפסידות) — מתעלמים מתיקו / 0.
 
-עבור `WHALE_REVERSAL` ו-`TIME_STOP` משאירים סגירה ב-current price (אלה לא stops עם מחיר מוגדר).
+## איך זה יורץ
 
-### 2. סינון שוקי ספורט קצרי-טווח עם gap risk
+פונקציה זמנית חד-פעמית (edge function `whale-sports-audit`) ש:
 
-בלולאת ה-OPEN, לדלג על שווקים שנפתרים תוך פחות מ-12 שעות **ו-**ה-tier הוא "high":
+1. שולפת את כל ה-wallets מהטבלה `tracked_wallets`.
+2. עבור כל ארנק — מושכת `positions` מ-Polymarket (עד 5000), מסננת ל-90 הימים האחרונים לפי `endDate`.
+3. עבור כל `condition_id` ייחודי — שולפת מטה-דאטה מ-Gamma API (`/markets?condition_ids=...`) בקבוצות, כדי לקבל `category` + `event_slug`. שומרת cache בזיכרון בתוך הריצה כדי לא לחזור על אותו market פעמיים.
+4. מסווגת ספורט/לא-ספורט/unknown לפי הלוגיקה למעלה.
+5. מחזירה JSON עם שורה לכל ארנק:
+  ```
+   { address, label, total_closed, total_winrate,
+     sport_closed, sport_winrate, sport_pct_of_volume,
+     nonsport_closed, nonsport_winrate, unknown_count }
+  ```
+6. בנוסף — סיכום אגרגטיבי: כמה ארנקים הם "בעיקר ספורט" (>50% ספורט), ומהו ה-win-rate הממוצע על ספורט מול לא-ספורט.
 
-```ts
-if (tier.tier === "high" && ttrHours != null && ttrHours < 12) {
-  skipped.push({ condition_id: s.condition_id, why: `gap risk: high tier + ttr ${ttrHours.toFixed(1)}h` });
-  continue;
-}
-```
+הריצה תבוצע פעם אחת דרך `curl_edge_functions`, התוצאה תישמר כ-`/mnt/documents/whale_sports_audit.csv` + טבלת סיכום קצרה בצ'אט.
 
-הרציונל: tier "high" (entry > 0.60) על שוק שנסגר היום = יחס סיכון/סיכוי גרוע בגלל קפיצות מחיר חדות סביב אירועים.
+## מה לא נעשה כרגע
 
-### 3. הקטנת `time_stop_hours` לברירת מחדל ל-tier high
+- לא נשנה את הבוט.
+- לא נשנה את ה-tier system.
+- לא ניצור טבלה חדשה ב-DB (זה ניתוח חד-פעמי; אם תרצה לחזור עליו נהפוך לכפתור ב-`/wallets`).
 
-ב-`dynamicExits` נוסיף החזר של `maxTimeStopHours`:
-- low: 24h
-- mid: 12h  
-- high: 6h
+## אחרי שתאשר
 
-ואז:
-```ts
-timeStopHours = Math.min(timeStopHours, tier.maxHours);
-```
+לאחר הרצת הניתוח נציג:
 
-### 4. איפוס נתונים
+- TOP 20 לוייתנים עם הכי הרבה ספורט (% מהפעילות)
+- TOP 20 עם הכי הרבה ספורט אבל **win-rate נמוך**
+- 5 לוייתנים שיש להם דווקא **win-rate גבוה על ספורט** (אם רוצים בכל זאת לעקוב)
 
-לאחר אישור, מיגרציה:
-```sql
-DELETE FROM paper_positions;
-```
-
-(ה-budget בקונפיג נשאר 1000.)
-
-## למה לא לפתור עם תדירות הרצה גבוהה יותר
-גם אם הבוט ירוץ כל 10 שניות, gaps בשוקי ספורט מתרחשים מיידית סביב אירועים. הפתרון הנכון לפייפר הוא **לסמלץ פילינג ריאלי של stop-loss** (ולא לקנות בשווקים שאי אפשר להגן עליהם).
-
-## מה לא משתנה
-- TP/SL/breakeven אחוזים
-- סכומי 30/60/90
-- שאר חוקי הסינון
+ואז תחליט אם:
+(א) להוסיף flag `exclude_sports` ב-`paper_bot_config`,
+(ב) לסמן ידנית לוייתנים "sports-heavy" כ-inactive,
+(ג) לא לעשות כלום ולהשאיר כמו שזה.

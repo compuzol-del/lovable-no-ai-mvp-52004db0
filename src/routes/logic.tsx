@@ -85,7 +85,7 @@ function LogicPage() {
         <Card>
           <CardHeader><CardTitle>כמה זמן מחזיקים?</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
-            <p>מקסימום <b>24 שעות</b> (time-stop). בפועל רוב הפוזיציות נסגרות מהר יותר על ידי TP/SL/BE/Reversal.</p>
+            <p>זמן החזקה דינמי לפי מחיר כניסה: <b>low &lt;0.20 → עד 24h · mid 0.20-0.60 → עד 12h · high &gt;0.60 → עד 6h</b>. בפועל רוב הפוזיציות נסגרות מהר יותר על ידי TP/SL/BE/Reversal.</p>
             <p>הבוט בודק את כל הפוזיציות הפתוחות כל 2 דקות, מעדכן מחיר נוכחי, ומפעיל את חוקי היציאה.</p>
           </CardContent>
         </Card>

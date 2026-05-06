@@ -112,8 +112,17 @@ Deno.serve(async (req) => {
         (p.size != null && Number(p.size) === 0),
       );
 
-      const winning = closed.filter((p) => Number(p.realizedPnl ?? p.cashPnl ?? 0) > 0).length;
-      const losing = closed.filter((p) => Number(p.realizedPnl ?? p.cashPnl ?? 0) < 0).length;
+      // Use combined pnl (realizedPnl + cashPnl) AND percentPnl to decide win/loss.
+      // Polymarket sometimes records lost positions with realizedPnl=0 (expired without redemption)
+      // — those must still count as losses. We treat any closed position with combined pnl < 0
+      // OR percentPnl < 0 as a loss, and only > 0 as a win.
+      const pnlOf = (p: Position) => Number(p.realizedPnl ?? 0) + Number(p.cashPnl ?? 0);
+      const winning = closed.filter((p) => pnlOf(p) > 0 || Number(p.percentPnl ?? 0) > 0).length;
+      const losing = closed.filter((p) => {
+        const pnl = pnlOf(p);
+        const pct = Number(p.percentPnl ?? 0);
+        return pnl < 0 || pct < 0 || (pnl === 0 && p.size === 0 && Number(p.initialValue ?? 0) > 0);
+      }).length;
       const totalDecided = winning + losing;
       const winRate = totalDecided > 0 ? winning / totalDecided : 0;
 

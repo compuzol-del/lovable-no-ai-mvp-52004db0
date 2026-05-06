@@ -54,6 +54,8 @@ function computeTier(metrics: { closed: number; winRate: number; avgRoi: number;
   // Hard catastrophic-loss guard — applies to ALL wallets regardless of closed count.
   if (closed >= 10 && avgRoi <= -50) return { tier: "EXCLUDED", score: 0 };
   if (totalPnlUsd != null && totalPnlUsd <= -100_000) return { tier: "EXCLUDED", score: 0 };
+  // Negative-avg-ROI guard — high winrate is meaningless if avg ROI is negative.
+  if (closed >= 10 && avgRoi < -10) return { tier: "EXCLUDED", score: 0 };
 
   let score = 0;
   score += Math.min(25, (closed / 500) * 25);

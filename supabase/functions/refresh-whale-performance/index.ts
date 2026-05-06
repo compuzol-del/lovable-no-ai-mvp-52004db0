@@ -37,43 +37,44 @@ async function fetchAll<T>(url: string, limit = 500, max = 5000): Promise<T[]> {
 function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number; volumeUsd: number; totalPnlUsd?: number }): { tier: string; score: number } {
   const { closed, winRate, avgRoi, last30d, markets, volumeUsd, totalPnlUsd } = metrics;
 
-  // Activity-based fallback: highly active whales with significant volume
-  // shouldn't be excluded just because Polymarket reports few "closed" positions
-  // (most of their positions are still in unresolved markets).
-  // Loosened thresholds to admit more proven, high-volume traders.
-  const isActiveHighVolume = (last30d >= 15 && volumeUsd >= 50_000) || volumeUsd >= 500_000;
+  // Dollar-PnL is the primary truth. avgRoi (percentPnl mean) is misleading:
+  // losses cap at -100% but wins are unbounded, so a profitable whale can still
+  // have a negative avg %. Only exclude on avgRoi if dollar PnL is also bad.
+  const isProfitable = (totalPnlUsd ?? 0) > 1_000;
+  const isVeryProfitable = (totalPnlUsd ?? 0) > 25_000;
+  const isActiveHighVolume = (last30d >= 10 && volumeUsd >= 50_000) || volumeUsd >= 500_000;
 
-  if (!isActiveHighVolume) {
-    if (closed < 15) return { tier: "EXCLUDED", score: 0 };
-    if (winRate < 0.45) return { tier: "EXCLUDED", score: 0 };
-  } else {
-    // For active whales, only exclude if we DO have enough closed data and it's clearly bad
-    if (closed >= 30 && winRate < 0.40) return { tier: "EXCLUDED", score: 0 };
-    if (closed >= 30 && avgRoi < -50) return { tier: "EXCLUDED", score: 0 };
+  // Hard guards (apply to everyone)
+  if ((totalPnlUsd ?? 0) <= -50_000) return { tier: "EXCLUDED", score: 0 };
+  if (closed >= 30 && winRate < 0.40 && !isProfitable) return { tier: "EXCLUDED", score: 0 };
+
+  // Soft activity gate — must show SOMETHING (trades, volume, or profit)
+  if (!isActiveHighVolume && !isProfitable && closed < 10) {
+    return { tier: "EXCLUDED", score: 0 };
   }
-  // Hard catastrophic-loss guard — applies to ALL wallets regardless of closed count.
-  if (closed >= 10 && avgRoi <= -50) return { tier: "EXCLUDED", score: 0 };
-  if (totalPnlUsd != null && totalPnlUsd <= -100_000) return { tier: "EXCLUDED", score: 0 };
-  // Negative-avg-ROI guard — high winrate is meaningless if avg ROI is negative.
-  if (closed >= 10 && avgRoi < -10) return { tier: "EXCLUDED", score: 0 };
+  // Only exclude on negative avgRoi if NOT profitable in dollars
+  if (closed >= 20 && avgRoi < -25 && !isProfitable) return { tier: "EXCLUDED", score: 0 };
 
   let score = 0;
-  score += Math.min(25, (closed / 500) * 25);
-  score += Math.max(0, Math.min(30, ((winRate - 0.5) / 0.2) * 30));
-  score += Math.max(0, Math.min(25, (avgRoi / 20) * 25));
+  score += Math.min(20, (closed / 300) * 20);
+  score += Math.max(0, Math.min(20, ((winRate - 0.45) / 0.25) * 20));
+  // ROI score (can go negative — capped)
+  score += Math.max(-10, Math.min(15, (avgRoi / 20) * 15));
   score += Math.min(10, (last30d / 30) * 10);
   score += Math.min(10, (markets / 50) * 10);
-  // Volume bonus for active high-volume whales lacking closed-position data
-  if (isActiveHighVolume && closed < 25) {
-    score += Math.min(25, (volumeUsd / 1_000_000) * 12);
-  }
+  // Dollar PnL bonus — the most important signal
+  if (isVeryProfitable) score += 25;
+  else if (isProfitable) score += 12;
+  // Volume bonus
+  score += Math.min(10, (volumeUsd / 1_000_000) * 10);
 
   let tier: string;
-  if (closed >= MIN_CLOSED && winRate >= MIN_WIN_RATE && avgRoi >= MIN_AVG_ROI && last30d >= MIN_30D_TRADES && markets >= MIN_MARKETS && score >= 75) {
+  if (closed >= MIN_CLOSED && winRate >= MIN_WIN_RATE && isVeryProfitable && last30d >= MIN_30D_TRADES && markets >= MIN_MARKETS && score >= 70) {
     tier = "S";
-  } else if (score >= 60) tier = "A";
-  else if (score >= 45) tier = "B";
-  else tier = "C";
+  } else if (score >= 55) tier = "A";
+  else if (score >= 40) tier = "B";
+  else if (score >= 20) tier = "C";
+  else tier = "EXCLUDED";
 
   return { tier, score: Math.round(score * 10) / 10 };
 }

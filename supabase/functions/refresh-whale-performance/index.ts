@@ -54,6 +54,8 @@ function computeTier(metrics: { closed: number; winRate: number; avgRoi: number;
   // Hard catastrophic-loss guard — applies to ALL wallets regardless of closed count.
   if (closed >= 10 && avgRoi <= -50) return { tier: "EXCLUDED", score: 0 };
   if (totalPnlUsd != null && totalPnlUsd <= -100_000) return { tier: "EXCLUDED", score: 0 };
+  // Negative-avg-ROI guard — high winrate is meaningless if avg ROI is negative.
+  if (closed >= 10 && avgRoi < -10) return { tier: "EXCLUDED", score: 0 };
 
   let score = 0;
   score += Math.min(25, (closed / 500) * 25);
@@ -112,8 +114,17 @@ Deno.serve(async (req) => {
         (p.size != null && Number(p.size) === 0),
       );
 
-      const winning = closed.filter((p) => Number(p.realizedPnl ?? p.cashPnl ?? 0) > 0).length;
-      const losing = closed.filter((p) => Number(p.realizedPnl ?? p.cashPnl ?? 0) < 0).length;
+      // Use combined pnl (realizedPnl + cashPnl) AND percentPnl to decide win/loss.
+      // Polymarket sometimes records lost positions with realizedPnl=0 (expired without redemption)
+      // — those must still count as losses. We treat any closed position with combined pnl < 0
+      // OR percentPnl < 0 as a loss, and only > 0 as a win.
+      const pnlOf = (p: Position) => Number(p.realizedPnl ?? 0) + Number(p.cashPnl ?? 0);
+      const winning = closed.filter((p) => pnlOf(p) > 0 || Number(p.percentPnl ?? 0) > 0).length;
+      const losing = closed.filter((p) => {
+        const pnl = pnlOf(p);
+        const pct = Number(p.percentPnl ?? 0);
+        return pnl < 0 || pct < 0 || (pnl === 0 && p.size === 0 && Number(p.initialValue ?? 0) > 0);
+      }).length;
       const totalDecided = winning + losing;
       const winRate = totalDecided > 0 ? winning / totalDecided : 0;
 

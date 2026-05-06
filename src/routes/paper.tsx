@@ -113,16 +113,20 @@ function PaperPage() {
   const filteredWinRate = closedFiltered.length ? (filteredWins / closedFiltered.length) * 100 : 0;
 
   async function load() {
-    const [{ data: o }, { data: c }, { data: cfg }] = await Promise.all([
+    const [{ data: o }, { data: c }, { data: cfg }, { data: lastPos }, { data: lastScan }] = await Promise.all([
       supabase.from("paper_positions").select("*").eq("status", "OPEN").order("opened_at", { ascending: false }),
       supabase.from("paper_positions").select("*").eq("status", "CLOSED").order("closed_at", { ascending: false }).limit(500),
       supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
+      supabase.from("paper_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
+      supabase.from("tracked_wallets").select("last_scanned_at").order("last_scanned_at", { ascending: false, nullsFirst: false }).limit(1),
     ]);
     setOpen((o as Position[]) || []);
-    // סינון פוזיציות סגורות עם PnL = 0 (רעש - לא רווח ולא הפסד)
     const closedFiltered = ((c as Position[]) || []).filter((p) => Number(p.pnl_usd ?? 0) !== 0);
     setClosed(closedFiltered);
     setConfig(cfg as Config | null);
+    const lp = (lastPos as any[])?.[0];
+    setLastBotRun(lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at) ? lp.closed_at : lp?.opened_at ?? null);
+    setLastScanRun((lastScan as any[])?.[0]?.last_scanned_at ?? null);
     setLoading(false);
   }
 

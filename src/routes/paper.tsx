@@ -225,7 +225,11 @@ function PaperPage() {
               <CardHeader className="pb-2"><CardTitle className="text-base">טבלת רווח והפסד</CardTitle></CardHeader>
               <CardContent className="p-0">
                 {(() => {
-                  const all = [...open, ...closed];
+                  const all = [...open, ...closed].sort((a, b) => {
+                    const ta = new Date(a.closed_at ?? a.opened_at).getTime();
+                    const tb = new Date(b.closed_at ?? b.opened_at).getTime();
+                    return tb - ta;
+                  });
                   const totalPages = Math.max(1, Math.ceil(all.length / PNL_PAGE_SIZE));
                   const curPage = Math.min(pnlPage, totalPages);
                   const pageItems = all.slice((curPage - 1) * PNL_PAGE_SIZE, curPage * PNL_PAGE_SIZE);

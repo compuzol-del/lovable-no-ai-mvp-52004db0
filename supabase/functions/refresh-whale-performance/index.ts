@@ -34,8 +34,8 @@ async function fetchAll<T>(url: string, limit = 500, max = 5000): Promise<T[]> {
   return out;
 }
 
-function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number; volumeUsd: number }): { tier: string; score: number } {
-  const { closed, winRate, avgRoi, last30d, markets, volumeUsd } = metrics;
+function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number; volumeUsd: number; totalPnlUsd?: number }): { tier: string; score: number } {
+  const { closed, winRate, avgRoi, last30d, markets, volumeUsd, totalPnlUsd } = metrics;
 
   // Activity-based fallback: highly active whales with significant volume
   // shouldn't be excluded just because Polymarket reports few "closed" positions

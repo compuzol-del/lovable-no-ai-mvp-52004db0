@@ -166,6 +166,9 @@ function PaperPage() {
           <div>
             <h1 className="text-2xl font-bold">🤖 Paper Bot</h1>
             <p className="text-sm text-muted-foreground">קונה ומוכר אוטומטית לפי סיגנלי לווייתנים</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              🤖 ריצת בוט אחרונה: <b>{fmtTime(lastBotRun)}</b> · 🐋 סריקת ארנקים אחרונה: <b>{fmtTime(lastScanRun)}</b>
+            </p>
           </div>
           <Button onClick={runNow} disabled={running} size="sm">
             <RefreshCw className={`h-4 w-4 mr-1 ${running ? "animate-spin" : ""}`} />

@@ -94,6 +94,8 @@ function PaperPage() {
   const [filterResult, setFilterResult] = useState<"all" | "win" | "loss">("all");
   const [pnlPage, setPnlPage] = useState(1);
   const PNL_PAGE_SIZE = 20;
+  const [lastBotRun, setLastBotRun] = useState<string | null>(null);
+  const [lastScanRun, setLastScanRun] = useState<string | null>(null);
 
   const closedFiltered = closed.filter((p) => {
     const pnl = Number(p.pnl_usd ?? 0);

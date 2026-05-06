@@ -51,6 +51,12 @@ function computeTier(metrics: { closed: number; winRate: number; avgRoi: number;
     if (closed >= 30 && winRate < 0.40) return { tier: "EXCLUDED", score: 0 };
     if (closed >= 30 && avgRoi < -50) return { tier: "EXCLUDED", score: 0 };
   }
+  // Hard catastrophic-loss guard — applies to ALL wallets regardless of closed count.
+  // A whale with avg ROI of -50% or PnL below -$100K is clearly destructive, no matter the volume.
+  if (closed >= 10 && avgRoi <= -50) return { tier: "EXCLUDED", score: 0 };
+  if (metrics && (metrics as any).totalPnlUsd != null && (metrics as any).totalPnlUsd <= -100_000) {
+    return { tier: "EXCLUDED", score: 0 };
+  }
 
   let score = 0;
   score += Math.min(25, (closed / 500) * 25);

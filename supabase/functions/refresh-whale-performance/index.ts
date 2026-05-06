@@ -34,8 +34,8 @@ async function fetchAll<T>(url: string, limit = 500, max = 5000): Promise<T[]> {
   return out;
 }
 
-function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number; volumeUsd: number }): { tier: string; score: number } {
-  const { closed, winRate, avgRoi, last30d, markets, volumeUsd } = metrics;
+function computeTier(metrics: { closed: number; winRate: number; avgRoi: number; last30d: number; markets: number; volumeUsd: number; totalPnlUsd?: number }): { tier: string; score: number } {
+  const { closed, winRate, avgRoi, last30d, markets, volumeUsd, totalPnlUsd } = metrics;
 
   // Activity-based fallback: highly active whales with significant volume
   // shouldn't be excluded just because Polymarket reports few "closed" positions
@@ -51,6 +51,9 @@ function computeTier(metrics: { closed: number; winRate: number; avgRoi: number;
     if (closed >= 30 && winRate < 0.40) return { tier: "EXCLUDED", score: 0 };
     if (closed >= 30 && avgRoi < -50) return { tier: "EXCLUDED", score: 0 };
   }
+  // Hard catastrophic-loss guard — applies to ALL wallets regardless of closed count.
+  if (closed >= 10 && avgRoi <= -50) return { tier: "EXCLUDED", score: 0 };
+  if (totalPnlUsd != null && totalPnlUsd <= -100_000) return { tier: "EXCLUDED", score: 0 };
 
   let score = 0;
   score += Math.min(25, (closed / 500) * 25);
@@ -129,7 +132,7 @@ Deno.serve(async (req) => {
       const lastTradeTs = trades.reduce((m: number, t: any) => Math.max(m, Number(t.timestamp ?? 0)), 0);
 
       const { tier, score } = computeTier({
-        closed: totalDecided, winRate, avgRoi, last30d: last30dTrades, markets: uniqueMarkets, volumeUsd: totalVolume,
+        closed: totalDecided, winRate, avgRoi, last30d: last30dTrades, markets: uniqueMarkets, volumeUsd: totalVolume, totalPnlUsd: totalPnl,
       });
 
       await supabaseAdmin.from("whale_performance").upsert({

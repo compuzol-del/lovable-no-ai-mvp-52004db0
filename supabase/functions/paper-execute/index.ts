@@ -73,9 +73,19 @@ function sizeForScore(score: number): number {
 
 // Dynamic TP/SL by entry price tier
 function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string; maxHours: number } {
-  if (entry < 0.20) return { tpPct: 40, slPct: -20, tier: "low", maxHours: 24 };
+  // Tuned 2026-05-07 based on perf: mid tier was weak (26% win rate, ~0 PnL).
+  // - mid: TP 20→15, SL -12→-18, time 12→8h
+  // - low: time 24→16h
+  // - high: unchanged (best performer)
+  if (entry < 0.20) return { tpPct: 40, slPct: -20, tier: "low", maxHours: 16 };
   if (entry > 0.60) return { tpPct: 12, slPct: -8, tier: "high", maxHours: 6 };
-  return { tpPct: 20, slPct: -12, tier: "mid", maxHours: 12 };
+  return { tpPct: 15, slPct: -18, tier: "mid", maxHours: 8 };
+}
+
+// Per-tier minimum score gate. Mid tier needs higher confidence given weak base rate.
+function minScoreForTier(tier: string, baseMin: number): number {
+  if (tier === "mid") return Math.max(baseMin, 88);
+  return baseMin;
 }
 
 function buildReason(s: any): string {

@@ -87,7 +87,15 @@ const WEIGHTS = {
 };
 
 function decide(finalScore: number, uniqueWallets: number, totalUsd: number, driftPct: number, burstMinutes: number) {
-  if (finalScore >= 75 && uniqueWallets >= 3 && totalUsd >= 10000 && Math.abs(driftPct) <= 5 && burstMinutes <= 120) {
+  // STRONG_BUY: high score + (consensus OR big capital), reasonable drift & burst
+  if (
+    finalScore >= 75 &&
+    uniqueWallets >= 2 &&
+    Math.abs(driftPct) <= 6 &&
+    burstMinutes <= 240 &&
+    (uniqueWallets >= 3 || totalUsd >= 20000) &&
+    totalUsd >= 1000
+  ) {
     return "STRONG_BUY";
   }
   if (finalScore >= 50 && uniqueWallets >= 2) return "WATCH";

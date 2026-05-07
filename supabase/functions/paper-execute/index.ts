@@ -73,9 +73,19 @@ function sizeForScore(score: number): number {
 
 // Dynamic TP/SL by entry price tier
 function dynamicExits(entry: number): { tpPct: number; slPct: number; tier: string; maxHours: number } {
-  if (entry < 0.20) return { tpPct: 40, slPct: -20, tier: "low", maxHours: 24 };
+  // Tuned 2026-05-07 based on perf: mid tier was weak (26% win rate, ~0 PnL).
+  // - mid: TP 20→15, SL -12→-18, time 12→8h
+  // - low: time 24→16h
+  // - high: unchanged (best performer)
+  if (entry < 0.20) return { tpPct: 40, slPct: -20, tier: "low", maxHours: 16 };
   if (entry > 0.60) return { tpPct: 12, slPct: -8, tier: "high", maxHours: 6 };
-  return { tpPct: 20, slPct: -12, tier: "mid", maxHours: 12 };
+  return { tpPct: 15, slPct: -18, tier: "mid", maxHours: 8 };
+}
+
+// Per-tier minimum score gate. Mid tier needs higher confidence given weak base rate.
+function minScoreForTier(tier: string, baseMin: number): number {
+  if (tier === "mid") return Math.max(baseMin, 88);
+  return baseMin;
 }
 
 function buildReason(s: any): string {
@@ -273,6 +283,13 @@ Deno.serve(async (req) => {
 
       // Dynamic TP/SL by entry price tier (or fall back to config flat values)
       const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat", maxHours: Number(cfg.time_stop_hours) };
+
+      // Per-tier min score gate (mid tier requires higher score)
+      const tierMin = minScoreForTier(tier.tier, Number(cfg.min_score));
+      if (Number(s.score) < tierMin) {
+        skipped.push({ condition_id: s.condition_id, why: `score ${s.score} < tier min ${tierMin} (${tier.tier})` });
+        continue;
+      }
 
       // Dynamic time-stop: min(config hours, tier max, 25% of time-to-resolution)
       let timeStopHours = Math.min(Number(cfg.time_stop_hours), tier.maxHours);

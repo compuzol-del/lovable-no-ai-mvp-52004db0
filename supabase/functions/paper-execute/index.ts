@@ -284,8 +284,6 @@ Deno.serve(async (req) => {
       // Dynamic TP/SL by entry price tier (or fall back to config flat values)
       const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat", maxHours: Number(cfg.time_stop_hours) };
 
-      const tier = useDynExits ? dynamicExits(entry) : { tpPct: Number(cfg.tp_pct), slPct: Number(cfg.sl_pct), tier: "flat", maxHours: Number(cfg.time_stop_hours) };
-
       // Per-tier min score gate (mid tier requires higher score)
       const tierMin = minScoreForTier(tier.tier, Number(cfg.min_score));
       if (Number(s.score) < tierMin) {

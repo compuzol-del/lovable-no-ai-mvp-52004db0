@@ -542,12 +542,14 @@ function SignalsPage() {
                       <div className="mb-1.5 text-xs font-semibold">פירוק ציון: {clampScore(selected.score).toFixed(0)}/100</div>
                       <div className="space-y-1">
                         {Object.entries(selected.score_breakdown).map(([key, val]) => {
-                          const pct = Math.max(0, Math.min(100, val.score));
+                          const raw = typeof val === "number" ? val : Number((val as any)?.score);
+                          const num = Number.isFinite(raw) ? raw : 0;
+                          const pct = Math.max(0, Math.min(100, num));
                           return (
                             <div key={key} className="text-[11px]">
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">{PARAM_LABELS[key] || key}</span>
-                                <span className="font-mono">{val.score.toFixed(0)}</span>
+                                <span className="font-mono">{num.toFixed(0)}</span>
                               </div>
                               <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                                 <div

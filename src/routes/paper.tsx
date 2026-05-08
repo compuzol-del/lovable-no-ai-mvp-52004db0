@@ -322,6 +322,16 @@ function PaperPage() {
                                 <span>Size: <b className="text-foreground">${Number(p.size_usd).toFixed(0)}</b></span>
                                 <span>כניסה: <b className="text-foreground">{Number(p.entry_price).toFixed(3)}</b></span>
                                 <span>{isOpen ? "נוכחי" : "יציאה"}: <b className="text-foreground">{Number(price).toFixed(3)}</b></span>
+                                {p.condition_id && (
+                                  <a
+                                    href={`https://polymarket.com/market/${p.condition_id}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                                  >
+                                    פולימרקט <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                )}
                               </div>
                             </div>
                           );

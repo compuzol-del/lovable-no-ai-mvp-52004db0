@@ -307,11 +307,11 @@ function PaperPage() {
                                   <td className="p-2 text-center">
                                     {p.condition_id && (
                                       <a
-                                        href={`https://polymarket.com/market/${p.condition_id}`}
+                                        href={marketUrl(p)}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="inline-flex items-center justify-center text-primary hover:underline"
-                                        title="פתח בפולימרקט"
+                                        title="פתח בפולימרקט / חיפוש רשמי"
                                       >
                                         <ExternalLink className="h-3.5 w-3.5" />
                                       </a>
@@ -356,13 +356,16 @@ function PaperPage() {
                                 <span>{isOpen ? "נוכחי" : "יציאה"}: <b className="text-foreground">{Number(price).toFixed(3)}</b></span>
                                 {p.condition_id && (
                                   <a
-                                    href={`https://polymarket.com/market/${p.condition_id}`}
+                                    href={marketUrl(p)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center gap-1 text-primary hover:underline"
                                   >
                                     פולימרקט <ExternalLink className="h-3 w-3" />
                                   </a>
+                                )}
+                                {!isOpen && p.resolved_outcome && (
+                                  <span>רשמי: <b className="text-foreground">{p.resolved_outcome}</b></span>
                                 )}
                               </div>
                             </div>

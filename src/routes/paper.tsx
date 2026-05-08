@@ -38,6 +38,9 @@ type Position = {
   closed_at: string | null;
   breakeven_moved: boolean | null;
   peak_price: number | null;
+  market_slug?: string | null;
+  event_slug?: string | null;
+  resolved_outcome?: string | null;
 };
 
 type Config = {
@@ -83,6 +86,33 @@ function timeLeft(iso: string) {
   return `${h}h ${m}m`;
 }
 
+function marketUrl(p: Position) {
+  if (p.event_slug) return `https://polymarket.com/event/${p.event_slug}`;
+  if (p.market_slug) return `https://polymarket.com/market/${p.market_slug}`;
+  return `https://polymarket.com/search?q=${encodeURIComponent(p.title || p.condition_id)}`;
+}
+
+async function attachMarketData(positions: Position[]) {
+  const conditionIds = Array.from(new Set(positions.map((p) => p.condition_id).filter(Boolean)));
+  if (conditionIds.length === 0) return positions;
+
+  const { data: markets } = await supabase
+    .from("markets")
+    .select("condition_id,slug,event_slug,resolved_outcome")
+    .in("condition_id", conditionIds);
+
+  const byConditionId = new Map((markets || []).map((m) => [m.condition_id, m]));
+  return positions.map((p) => {
+    const market = byConditionId.get(p.condition_id);
+    return {
+      ...p,
+      market_slug: market?.slug ?? null,
+      event_slug: market?.event_slug ?? null,
+      resolved_outcome: market?.resolved_outcome ?? null,
+    };
+  });
+}
+
 function PaperPage() {
   const [open, setOpen] = useState<Position[]>([]);
   const [closed, setClosed] = useState<Position[]>([]);
@@ -120,9 +150,11 @@ function PaperPage() {
       supabase.from("paper_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
       supabase.from("tracked_wallets").select("last_scanned_at").order("last_scanned_at", { ascending: false, nullsFirst: false }).limit(1),
     ]);
-    setOpen((o as Position[]) || []);
+    const openWithMarkets = await attachMarketData((o as Position[]) || []);
     const closedFiltered = ((c as Position[]) || []).filter((p) => Number(p.pnl_usd ?? 0) !== 0);
-    setClosed(closedFiltered);
+    const closedWithMarkets = await attachMarketData(closedFiltered);
+    setOpen(openWithMarkets);
+    setClosed(closedWithMarkets);
     setConfig(cfg as Config | null);
     const lp = (lastPos as any[])?.[0];
     setLastBotRun(lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at) ? lp.closed_at : lp?.opened_at ?? null);
@@ -275,11 +307,11 @@ function PaperPage() {
                                   <td className="p-2 text-center">
                                     {p.condition_id && (
                                       <a
-                                        href={`https://polymarket.com/market/${p.condition_id}`}
+                                        href={marketUrl(p)}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="inline-flex items-center justify-center text-primary hover:underline"
-                                        title="פתח בפולימרקט"
+                                        title="פתח בפולימרקט / חיפוש רשמי"
                                       >
                                         <ExternalLink className="h-3.5 w-3.5" />
                                       </a>
@@ -324,13 +356,16 @@ function PaperPage() {
                                 <span>{isOpen ? "נוכחי" : "יציאה"}: <b className="text-foreground">{Number(price).toFixed(3)}</b></span>
                                 {p.condition_id && (
                                   <a
-                                    href={`https://polymarket.com/market/${p.condition_id}`}
+                                    href={marketUrl(p)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center gap-1 text-primary hover:underline"
                                   >
                                     פולימרקט <ExternalLink className="h-3 w-3" />
                                   </a>
+                                )}
+                                {!isOpen && p.resolved_outcome && (
+                                  <span>רשמי: <b className="text-foreground">{p.resolved_outcome}</b></span>
                                 )}
                               </div>
                             </div>
@@ -500,6 +535,7 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
           ) : (
             <>
               <span>נסגר: {fmtTime(p.closed_at)}</span>
+              {p.resolved_outcome && <span>תוצאה רשמית: <b className="text-foreground">{p.resolved_outcome}</b></span>}
               <Badge variant={Number(p.pnl_usd ?? 0) >= 0 ? "default" : "destructive"} className="text-xs">
                 {p.exit_reason}
               </Badge>
@@ -507,7 +543,7 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
           )}
           {p.condition_id && (
             <a
-              href={`https://polymarket.com/market/${p.condition_id}`}
+              href={marketUrl(p)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-primary hover:underline"

@@ -535,6 +535,7 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
           ) : (
             <>
               <span>נסגר: {fmtTime(p.closed_at)}</span>
+              {p.resolved_outcome && <span>תוצאה רשמית: <b className="text-foreground">{p.resolved_outcome}</b></span>}
               <Badge variant={Number(p.pnl_usd ?? 0) >= 0 ? "default" : "destructive"} className="text-xs">
                 {p.exit_reason}
               </Badge>
@@ -542,7 +543,7 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
           )}
           {p.condition_id && (
             <a
-              href={`https://polymarket.com/market/${p.condition_id}`}
+              href={marketUrl(p)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-primary hover:underline"

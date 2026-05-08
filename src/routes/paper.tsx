@@ -246,7 +246,8 @@ function PaperPage() {
                               <th className="text-center p-2 w-[10%]">כניסה</th>
                               <th className="text-center p-2 w-[14%]">נוכחי/יציאה</th>
                               <th className="text-center p-2 w-[12%]">P&L $</th>
-                              <th className="text-center p-2 w-[12%]">P&L %</th>
+                              <th className="text-center p-2 w-[10%]">P&L %</th>
+                              <th className="text-center p-2 w-[6%]">קישור</th>
                             </tr>
                           </thead>
                           <tbody>

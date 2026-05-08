@@ -272,6 +272,19 @@ function PaperPage() {
                                   <td className="p-2 text-center">{Number(price).toFixed(3)}</td>
                                   <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
                                   <td className={`p-2 text-center font-medium ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</td>
+                                  <td className="p-2 text-center">
+                                    {p.condition_id && (
+                                      <a
+                                        href={`https://polymarket.com/market/${p.condition_id}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center justify-center text-primary hover:underline"
+                                        title="פתח בפולימרקט"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                      </a>
+                                    )}
+                                  </td>
                                 </tr>
                               );
                             })}

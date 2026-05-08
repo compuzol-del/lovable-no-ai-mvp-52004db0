@@ -252,7 +252,7 @@ function PaperPage() {
                           </thead>
                           <tbody>
                             {all.length === 0 && (
-                              <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">אין נתונים עדיין</td></tr>
+                              <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">אין נתונים עדיין</td></tr>
                             )}
                             {pageItems.map((p) => {
                               const isOpen = p.status === "OPEN";

@@ -269,10 +269,23 @@ function RealPage() {
             <p className="text-sm text-muted-foreground">בוט כסף אמיתי — סכומים קטנים, פילטרים מוקשחים, kill-switch יומי</p>
             <p className="text-xs text-muted-foreground mt-1">🤖 ריצת בוט אחרונה: <b>{fmtTime(lastBotRun)}</b></p>
           </div>
-          <Button onClick={runNow} disabled={running} size="sm">
-            <RefreshCw className={`h-4 w-4 mr-1 ${running ? "animate-spin" : ""}`} />
-            הפעל עכשיו
-          </Button>
+          <div className="flex items-center gap-2">
+            {config?.enabled ? (
+              <Button onClick={() => toggleBot("stop")} disabled={toggling} size="sm" variant="destructive">
+                <Power className={`h-4 w-4 mr-1 ${toggling ? "animate-pulse" : ""}`} />
+                עצור בוט
+              </Button>
+            ) : (
+              <Button onClick={() => toggleBot("start")} disabled={toggling} size="sm" variant="default">
+                <Power className={`h-4 w-4 mr-1 ${toggling ? "animate-pulse" : ""}`} />
+                הפעל בוט (עם בדיקות)
+              </Button>
+            )}
+            <Button onClick={runNow} disabled={running} size="sm" variant="outline">
+              <RefreshCw className={`h-4 w-4 mr-1 ${running ? "animate-spin" : ""}`} />
+              ריצה ידנית
+            </Button>
+          </div>
         </div>
 
         {config && (

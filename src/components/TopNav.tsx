@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { to: "/paper", label: "🤖 Paper Bot" },
+  { to: "/real", label: "💵 Real Bot" },
   { to: "/wallets", label: "🐋 לווייתנים" },
   { to: "/signals", label: "📡 סיגנלים" },
   { to: "/logic", label: "📖 לוגיקה" },

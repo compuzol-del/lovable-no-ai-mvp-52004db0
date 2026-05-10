@@ -1,62 +1,82 @@
-מטרה
+## מטרה
 
-לבצע ניתוח חד-פעמי של 213 הלוייתנים שאנחנו עוקבים אחריהם, להראות עבור כל אחד:
+להוסיף **בוט אמיתי (Real Money)** לצד ה-Paper Bot, עם דשבורד נפרד, סכומים קטנים, פילטרים מוקשחים, daily loss limit, ו-Dry Run עד שיגיעו מפתחות Polymarket.
 
-- כמה פוזיציות **ספורט** היו לו ב-90 הימים האחרונים
-- אחוז ההצלחה שלו על פוזיציות ספורט (לעומת אחוז ההצלחה הכללי)
-- חלק הספורט מסך הפעילות שלו
+ה-Paper Bot הקיים **לא ישתנה בכלל** — קוד, הגדרות, וטבלאות נשארים זהים.
 
-זה ניתוח חקירה — לא תכונת אפליקציה. הפלט יהיה דוח שתוכל להוריד (CSV + סיכום), ובמידה ותרצה — נשתמש בו כדי להחליט אם להוסיף פילטר "no sports" לבוט.
+---
 
-## איך נזהה "ספורט"
+## שינויי DB (migration)
 
-שלוש שכבות, בסדר עדיפות:
+טבלאות חדשות זהות במבנה ל-Paper:
 
-1. שדה `category` של ה-market (אם קיים ב-Polymarket Gamma API: `Sports`, `EPL`, `NBA`, `NFL`, `UFC`, `Soccer`, `MLB`, `NHL`, `Tennis`, `F1`, `Boxing` וכד').
-2. אם אין `category`, ננסה לזהות לפי `event_slug` / `slug` עם רשימת מילות מפתח (epl, nba, nfl, ufc, mma, nhl, mlb, tennis, soccer, football, ucl, champions-league, world-cup, boxing, f1, formula, wnba, ncaa).
-3. אם עדיין לא בטוח — נסמן כ-`unknown` (לא יכלל בספירת הספורט).
+- **`real_bot_config`** (singleton id=1) — אותם שדות כמו `paper_bot_config` + שדות חדשים:
+  - `dry_run boolean default true`
+  - `daily_loss_limit_usd numeric default 50`
+  - `daily_halt_until timestamptz` — מתעדכן אוטומטית כשנפרץ הסף
+  - ערכי ברירת מחדל מוקשחים: `min_score=80`, `min_market_volume_usd=20000`, `min_market_liquidity_usd=5000`, `max_open_total=8`, `max_open_per_event=2`
+- **`real_positions`** — מבנה זהה ל-`paper_positions` + `order_id text` (ID מ-Polymarket אחרי ביצוע אמיתי).
+- RLS: public read, writes via service role בלבד (כמו ה-Paper).
 
-## איך נמדוד "הצלחה"
+## דשבורד חדש `/real`
 
-- נמשוך מ-`https://data-api.polymarket.com/positions?user=<addr>` את כל הפוזיציות.
-- "סגורה" = `redeemable=true` או `endDate < now` או `size==0`.
-- "מנצחת" = `realizedPnl + cashPnl > 0`.
-- חלון זמן: פוזיציות עם `endDate` ב-90 הימים האחרונים (כי `positions` לא תמיד מחזיר תאריך פתיחה).
-- win-rate = מנצחות / (מנצחות + מפסידות) — מתעלמים מתיקו / 0.
+- שכפול 1:1 של `src/routes/paper.tsx` → `src/routes/real.tsx`, קורא מ-`real_positions` / `real_bot_config`.
+- 3 לשוניות פנימיות זהות (פתוחות / סגורות / קונפיג) + לינקים ל-Polymarket.
+- באנר אדום למעלה: **"💵 Real Money — Dry Run"** או **"💵 Real Money — LIVE"** לפי הסטטוס.
+- מציג: Daily PnL היום, Daily Loss Limit, האם הבוט מושהה עד מחר.
+- טאב חדש ב-`TopNav`: **💵 Real Bot** ליד ה-Paper Bot.
 
-## איך זה יורץ
+## Hook חדש `real-execute`
 
-פונקציה זמנית חד-פעמית (edge function `whale-sports-audit`) ש:
+שכפול של `paper-execute` עם השינויים הבאים בלבד:
 
-1. שולפת את כל ה-wallets מהטבלה `tracked_wallets`.
-2. עבור כל ארנק — מושכת `positions` מ-Polymarket (עד 5000), מסננת ל-90 הימים האחרונים לפי `endDate`.
-3. עבור כל `condition_id` ייחודי — שולפת מטה-דאטה מ-Gamma API (`/markets?condition_ids=...`) בקבוצות, כדי לקבל `category` + `event_slug`. שומרת cache בזיכרון בתוך הריצה כדי לא לחזור על אותו market פעמיים.
-4. מסווגת ספורט/לא-ספורט/unknown לפי הלוגיקה למעלה.
-5. מחזירה JSON עם שורה לכל ארנק:
-  ```
-   { address, label, total_closed, total_winrate,
-     sport_closed, sport_winrate, sport_pct_of_volume,
-     nonsport_closed, nonsport_winrate, unknown_count }
-  ```
-6. בנוסף — סיכום אגרגטיבי: כמה ארנקים הם "בעיקר ספורט" (>50% ספורט), ומהו ה-win-rate הממוצע על ספורט מול לא-ספורט.
+**סכומי הימור:**
+- 75-84 → $10 · 85-94 → $20 · 95+ → $30
 
-הריצה תבוצע פעם אחת דרך `curl_edge_functions`, התוצאה תישמר כ-`/mnt/documents/whale_sports_audit.csv` + טבלת סיכום קצרה בצ'אט.
+**Daily Loss Kill-Switch:**
+- לפני כל ריצה: סכום `pnl_usd` מכל הפוזיציות שנסגרו היום (00:00 UTC ואילך).
+- אם ≤ −$50 → לעדכן `daily_halt_until = tomorrow 00:00 UTC`, לדלג על פתיחות חדשות (סגירות של פוזיציות פתוחות ממשיכות לרוץ).
+- אם `now() < daily_halt_until` → לדלג על פתיחות.
 
-## מה לא נעשה כרגע
+**פילטרים מוקשחים נוספים (מעבר למה שכבר ב-Paper):**
+- `min_score ≥ 80`
+- `min_market_volume_usd ≥ 20000`
+- `min_market_liquidity_usd ≥ 5000`
+- `max_open_total = 8`
+- מחיר כניסה בין 0.05 ל-0.85
+- Slippage guard: אם המחיר הנוכחי > 1.5% מעל `avg_price` של הסיגנל → דלג
+- Whale-reversal exit: ≥1 sell (במקום ≥2)
 
-- לא נשנה את הבוט.
-- לא נשנה את ה-tier system.
-- לא ניצור טבלה חדשה ב-DB (זה ניתוח חד-פעמי; אם תרצה לחזור עליו נהפוך לכפתור ב-`/wallets`).
+**Dry Run:**
+- אם `dry_run=true` → רק כותב את הפוזיציה ל-`real_positions` עם `order_id=null`. אין שום קריאת רשת ל-Polymarket לביצוע.
+- אם `dry_run=false` → שולח limit order ל-Polymarket CLOB דרך `POLYMARKET_*` secrets.
 
-## אחרי שתאשר
+**עמלות:**
+- חישוב PnL נטו עם הפחתת ~2% עמלת זכייה.
 
-לאחר הרצת הניתוח נציג:
+## מפתחות שצריך להביא מ-Polymarket
 
-- TOP 20 לוייתנים עם הכי הרבה ספורט (% מהפעילות)
-- TOP 20 עם הכי הרבה ספורט אבל **win-rate נמוך**
-- 5 לוייתנים שיש להם דווקא **win-rate גבוה על ספורט** (אם רוצים בכל זאת לעקוב)
+(אבקש דרך `add_secret` רק אחרי שתאשר את התוכנית)
 
-ואז תחליט אם:
-(א) להוסיף flag `exclude_sports` ב-`paper_bot_config`,
-(ב) לסמן ידנית לוייתנים "sports-heavy" כ-inactive,
-(ג) לא לעשות כלום ולהשאיר כמו שזה.
+1. `POLYMARKET_PRIVATE_KEY` — private key של ארנק Polygon שמחובר ל-Polymarket
+2. `POLYMARKET_API_KEY`
+3. `POLYMARKET_API_SECRET`
+4. `POLYMARKET_API_PASSPHRASE`
+
+איך משיגים: polymarket.com → Profile → Settings → API Keys → Create API Key. הארנק חייב USDC.e על Polygon ו-approval חתום ל-Polymarket Exchange.
+
+## Cron
+
+תצטרך להוסיף ידנית (אתן לך SQL מוכן בסוף):
+```
+SELECT cron.schedule('real-execute', '*/2 * * * *', ...);
+```
+
+## רצף עבודה
+
+1. Migration לטבלאות `real_bot_config` + `real_positions`.
+2. יצירת `src/routes/real.tsx` (משכפל את `/paper`).
+3. עדכון `TopNav.tsx` עם הטאב החדש.
+4. יצירת `src/routes/api/public/hooks/real-execute.ts` עם הסכומים, ה-kill switch, וה-Dry Run mode.
+5. עדכון `/logic` בהסבר על הבוט האמיתי.
+6. אחרי שתאשר ותביא את 4 המפתחות → להחליף את ה-Dry Run בקריאות אמיתיות ל-Polymarket CLOB.

@@ -130,6 +130,7 @@ function RealPage() {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [filterFrom, setFilterFrom] = useState<string>("");
   const [filterTo, setFilterTo] = useState<string>("");
   const [filterResult, setFilterResult] = useState<"all" | "win" | "loss">("all");
@@ -198,6 +199,42 @@ function RealPage() {
     }
   }
 
+  async function toggleBot(action: "start" | "stop", clearHalt = false) {
+    setToggling(true);
+    try {
+      const res = await fetch("/api/public/hooks/real-toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, clear_halt: clearHalt }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) {
+        const failed = (j.checks || []).filter((c: any) => !c.ok);
+        if (failed.length > 0) {
+          const msg = failed.map((c: any) => `❌ ${c.name}: ${c.detail}`).join("\n");
+          toast.error(msg, { duration: 8000 });
+          // If halt is the only blocker, offer override
+          const onlyHalt = failed.length === 1 && failed[0].name === "daily_halt";
+          if (onlyHalt && action === "start" && !clearHalt) {
+            if (confirm("הבוט מושהה ע״י ה-kill switch היומי. לאפס את ההשהיה ולהפעיל בכל זאת?")) {
+              await toggleBot("start", true);
+              return;
+            }
+          }
+        } else {
+          toast.error(j.error || "failed");
+        }
+        return;
+      }
+      toast.success(action === "start" ? "✅ הבוט הופעל — כל הבדיקות עברו" : "🛑 הבוט נעצר");
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setToggling(false);
+    }
+  }
+
   const totalOpenValue = open.reduce((s, p) => s + (p.current_price ?? p.entry_price) * Number(p.shares), 0);
   const totalOpenCost = open.reduce((s, p) => s + Number(p.size_usd), 0);
   const openPnl = totalOpenValue - totalOpenCost;
@@ -232,10 +269,23 @@ function RealPage() {
             <p className="text-sm text-muted-foreground">בוט כסף אמיתי — סכומים קטנים, פילטרים מוקשחים, kill-switch יומי</p>
             <p className="text-xs text-muted-foreground mt-1">🤖 ריצת בוט אחרונה: <b>{fmtTime(lastBotRun)}</b></p>
           </div>
-          <Button onClick={runNow} disabled={running} size="sm">
-            <RefreshCw className={`h-4 w-4 mr-1 ${running ? "animate-spin" : ""}`} />
-            הפעל עכשיו
-          </Button>
+          <div className="flex items-center gap-2">
+            {config?.enabled ? (
+              <Button onClick={() => toggleBot("stop")} disabled={toggling} size="sm" variant="destructive">
+                <Power className={`h-4 w-4 mr-1 ${toggling ? "animate-pulse" : ""}`} />
+                עצור בוט
+              </Button>
+            ) : (
+              <Button onClick={() => toggleBot("start")} disabled={toggling} size="sm" variant="default">
+                <Power className={`h-4 w-4 mr-1 ${toggling ? "animate-pulse" : ""}`} />
+                הפעל בוט (עם בדיקות)
+              </Button>
+            )}
+            <Button onClick={runNow} disabled={running} size="sm" variant="outline">
+              <RefreshCw className={`h-4 w-4 mr-1 ${running ? "animate-spin" : ""}`} />
+              ריצה ידנית
+            </Button>
+          </div>
         </div>
 
         {config && (

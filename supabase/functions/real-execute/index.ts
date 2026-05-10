@@ -19,6 +19,65 @@ async function fetchPrice(asset: string | null): Promise<number | null> {
   }
 }
 
+// Lazily import @polymarket/clob-client and place a real BUY limit order on Polygon CLOB.
+// Uses EIP-712 signing via @ethersproject/wallet under the hood.
+async function placeLiveBuyOrder(
+  tokenId: string,
+  price: number,
+  shares: number,
+): Promise<{ orderId: string | null; error: string | null }> {
+  try {
+    const pk = Deno.env.get("POLYMARKET_PRIVATE_KEY");
+    const apiKey = Deno.env.get("POLYMARKET_API_KEY");
+    const apiSecret = Deno.env.get("POLYMARKET_API_SECRET");
+    const passphrase = Deno.env.get("POLYMARKET_API_PASSPHRASE");
+    const funder = Deno.env.get("POLYMARKET_FUNDER_ADDRESS") || undefined;
+    const sigTypeRaw = Deno.env.get("POLYMARKET_SIG_TYPE");
+    if (!pk || !apiKey || !apiSecret || !passphrase) {
+      return { orderId: null, error: "missing POLYMARKET_* env vars" };
+    }
+    if (!tokenId) return { orderId: null, error: "missing tokenId/asset" };
+
+    const [{ ClobClient, OrderType, Side }, walletMod] = await Promise.all([
+      import("npm:@polymarket/clob-client@4.21.0"),
+      import("npm:@ethersproject/wallet@5.7.0"),
+    ]);
+    const Wallet = (walletMod as any).Wallet;
+
+    const wallet = new Wallet(pk.startsWith("0x") ? pk : `0x${pk}`);
+    const creds = { key: apiKey, secret: apiSecret, passphrase };
+    const signatureType = sigTypeRaw ? Number(sigTypeRaw) : undefined;
+
+    const client = new (ClobClient as any)(
+      "https://clob.polymarket.com",
+      137,
+      wallet,
+      creds,
+      signatureType,
+      funder,
+    );
+
+    const roundedPrice = Math.round(price * 1000) / 1000;
+    const roundedSize = Math.round(shares * 100) / 100;
+    if (roundedSize <= 0) return { orderId: null, error: "size rounded to 0" };
+
+    const signed = await client.createOrder({
+      tokenID: tokenId,
+      price: roundedPrice,
+      side: Side.BUY,
+      size: roundedSize,
+      feeRateBps: 0,
+    });
+    const resp: any = await client.postOrder(signed, OrderType.GTC);
+    if (!resp?.success) {
+      return { orderId: null, error: resp?.errorMsg || resp?.error || "order rejected" };
+    }
+    return { orderId: resp.orderID ?? resp.orderId ?? null, error: null };
+  } catch (e: any) {
+    return { orderId: null, error: e?.message ?? String(e) };
+  }
+}
+
 // Real-money sizing: 10 / 20 / 30
 function sizeForScore(score: number): number {
   if (score >= 95) return 30;
@@ -209,8 +268,12 @@ Deno.serve(async (req) => {
 
         let orderId: string | null = null;
         if (!cfg.dry_run) {
-          skipped.push({ condition_id: s.condition_id, why: "live mode but Polymarket order placement not implemented yet" });
-          continue;
+          const live = await placeLiveBuyOrder(s.asset, entry, shares);
+          if (!live.orderId) {
+            skipped.push({ condition_id: s.condition_id, why: `live order failed: ${live.error}` });
+            continue;
+          }
+          orderId = live.orderId;
         }
 
         const { error: insErr, data: ins } = await supabaseAdmin.from("real_positions").insert({

@@ -71,6 +71,27 @@ type Config = {
   last_run_skipped: number | null;
   last_run_status: string | null;
   last_run_error: string | null;
+  execution_mode: "paper" | "live_compliant_only";
+  last_geo_check_at: string | null;
+  last_geo_country: string | null;
+  last_geo_blocked: boolean | null;
+  worker_last_seen_at: string | null;
+};
+
+type Intent = {
+  id: number;
+  created_at: string;
+  position_id: number | null;
+  condition_id: string;
+  token_id: string;
+  side: string;
+  price: number;
+  shares: number;
+  size_usd: number | null;
+  status: string;
+  order_id: string | null;
+  error: string | null;
+  geo_country: string | null;
 };
 
 export const Route = createFileRoute("/real")({

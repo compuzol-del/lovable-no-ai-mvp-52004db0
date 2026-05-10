@@ -268,8 +268,12 @@ Deno.serve(async (req) => {
 
         let orderId: string | null = null;
         if (!cfg.dry_run) {
-          skipped.push({ condition_id: s.condition_id, why: "live mode but Polymarket order placement not implemented yet" });
-          continue;
+          const live = await placeLiveBuyOrder(s.asset, entry, shares);
+          if (!live.orderId) {
+            skipped.push({ condition_id: s.condition_id, why: `live order failed: ${live.error}` });
+            continue;
+          }
+          orderId = live.orderId;
         }
 
         const { error: insErr, data: ins } = await supabaseAdmin.from("real_positions").insert({

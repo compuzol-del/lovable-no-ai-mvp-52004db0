@@ -81,8 +81,15 @@ Deno.serve(async (req) => {
       if (cur >= triggerPrice) { slPrice = Math.max(slPrice, entry); breakevenMoved = true; }
     }
     if (cur != null) {
-      if (cur >= Number(p.tp_price)) exitReason = "TAKE_PROFIT";
-      else if (cur <= slPrice) exitReason = breakevenMoved ? "BREAKEVEN_STOP" : "STOP_LOSS";
+      if (cur >= Number(p.tp_price)) {
+        exitReason = "TAKE_PROFIT";
+        // cap exit at TP to simulate limit order fill
+        exitPrice = Math.max(Number(p.tp_price), Math.min(cur, Number(p.tp_price) * 1.05));
+      } else if (cur <= slPrice) {
+        exitReason = breakevenMoved ? "BREAKEVEN_STOP" : "STOP_LOSS";
+        // cap loss at SL price (simulates stop-limit) instead of current crashed price
+        exitPrice = slPrice;
+      }
     }
     if (!exitReason && new Date(p.time_stop_at).getTime() <= now) exitReason = "TIME_STOP";
 

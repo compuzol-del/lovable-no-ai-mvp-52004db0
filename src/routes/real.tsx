@@ -303,6 +303,18 @@ function RealPage() {
               <RefreshCw className={`h-4 w-4 mr-1 ${running ? "animate-spin" : ""}`} />
               ריצה ידנית
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                if (!confirm("לאפס? כל הפוזיציות (פתוחות + סגורות) יימחקו, הבוט ייעצר וההשהיה היומית תתאפס.")) return;
+                const { data: j, error } = await supabase.functions.invoke("real-reset");
+                if (error || !j?.ok) toast.error(error?.message || j?.error || "failed");
+                else { toast.success("✅ אופס"); await load(); }
+              }}
+            >
+              איפוס
+            </Button>
           </div>
         </div>
 

@@ -102,7 +102,7 @@ export const Route = createFileRoute("/api/public/hooks/real-toggle")({
           return Response.json({ ok: false, enabled: cfg.enabled, checks }, { status: 400 });
         }
 
-        const update: Record<string, any> = { enabled: true };
+        const update: { enabled: true; daily_halt_until?: null } = { enabled: true };
         if (clearHalt && haltActive) update.daily_halt_until = null;
         await supabaseAdmin.from("real_bot_config").update(update).eq("id", 1);
 

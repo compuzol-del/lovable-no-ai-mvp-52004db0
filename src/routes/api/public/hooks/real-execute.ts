@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "../../../../integrations/supabase/client.server";
+import { placeBuyOrder } from "../../../../integrations/polymarket/client.server";
 
 const POLYMARKET_CLOB = "https://clob.polymarket.com";
 

@@ -1,0 +1,14 @@
+{
+  "name": "polymarket-compliant-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@ethersproject/wallet": "^5.7.0",
+    "@polymarket/clob-client": "^4.21.0",
+    "dotenv": "^16.4.5"
+  }
+}

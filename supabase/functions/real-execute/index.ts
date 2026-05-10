@@ -228,15 +228,7 @@ Deno.serve(async (req) => {
         const reason = buildReason(s);
         const exitStrategy = buildExitStrategy(Number(cfg.tp_pct), Number(cfg.sl_pct), Number(cfg.time_stop_hours), entry);
 
-        let orderId: string | null = null;
-        if (!cfg.dry_run) {
-          const live = await placeLiveBuyOrder(s.asset, entry, shares);
-          if (!live.orderId) {
-            skipped.push({ condition_id: s.condition_id, why: `live order failed: ${live.error}` });
-            continue;
-          }
-          orderId = live.orderId;
-        }
+        const isLive = cfg.execution_mode === "live_compliant_only" && !cfg.dry_run;
 
         const { error: insErr, data: ins } = await supabaseAdmin.from("real_positions").insert({
           signal_id: s.id, condition_id: s.condition_id, asset: s.asset, outcome: s.outcome, title: s.title,
@@ -247,11 +239,25 @@ Deno.serve(async (req) => {
           exit_strategy: exitStrategy, current_price: entry, last_price_at: new Date().toISOString(),
           status: "OPEN", event_id: market?.event_id ?? null,
           market_volume_usd: market?.volume ?? null, market_liquidity_usd: market?.liquidity ?? null,
-          order_id: orderId, dry_run: !!cfg.dry_run,
+          order_id: null, dry_run: !isLive,
         }).select("id").single();
 
-        if (insErr) skipped.push({ condition_id: s.condition_id, why: insErr.message });
-        else { opened.push({ id: ins?.id, score: s.score, sizeUsd, entry, dry_run: !!cfg.dry_run }); currentOpen += 1; }
+        if (insErr) { skipped.push({ condition_id: s.condition_id, why: insErr.message }); continue; }
+
+        // LIVE compliant mode → enqueue intent for the local worker (geoblock + CLOB happens there)
+        if (isLive && ins?.id) {
+          const { error: intentErr } = await supabaseAdmin.from("execution_intents").insert({
+            position_id: ins.id, condition_id: s.condition_id, token_id: s.asset,
+            side: "BUY", price: Math.round(entry * 1000) / 1000,
+            shares: Math.round(shares * 100) / 100, size_usd: sizeUsd, status: "PENDING",
+          });
+          if (intentErr) {
+            skipped.push({ condition_id: s.condition_id, why: `intent enqueue failed: ${intentErr.message}` });
+          }
+        }
+
+        opened.push({ id: ins?.id, score: s.score, sizeUsd, entry, live: isLive });
+        currentOpen += 1;
       }
     }
   }

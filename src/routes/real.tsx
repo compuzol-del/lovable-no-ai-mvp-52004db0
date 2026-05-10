@@ -638,6 +638,7 @@ function RealPage() {
               </CardContent>
             </Card>
           </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

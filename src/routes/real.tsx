@@ -164,6 +164,7 @@ function RealPage() {
   const [pnlPage, setPnlPage] = useState(1);
   const PNL_PAGE_SIZE = 20;
   const [lastBotRun, setLastBotRun] = useState<string | null>(null);
+  const [intents, setIntents] = useState<Intent[]>([]);
 
   const closedFiltered = closed.filter((p) => {
     const pnl = Number(p.pnl_usd ?? 0);

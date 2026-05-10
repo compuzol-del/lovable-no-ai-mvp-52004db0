@@ -187,9 +187,9 @@ function RealPage() {
   async function runNow() {
     setRunning(true);
     try {
-      const res = await fetch("/api/public/hooks/real-execute", { method: "POST" });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "failed");
+      const { data: j, error } = await supabase.functions.invoke("real-execute");
+      if (error) throw new Error(error.message || "failed");
+      if (!j?.ok) throw new Error(j?.error || "failed");
       toast.success(`Opened ${j.opened} · Closed ${j.closed} · Skipped ${j.skipped}${j.halted ? " · HALTED" : ""}`);
       await load();
     } catch (e: any) {
@@ -202,13 +202,11 @@ function RealPage() {
   async function toggleBot(action: "start" | "stop", clearHalt = false) {
     setToggling(true);
     try {
-      const res = await fetch("/api/public/hooks/real-toggle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, clear_halt: clearHalt }),
+      const { data: j, error } = await supabase.functions.invoke("real-toggle", {
+        body: { action, clear_halt: clearHalt },
       });
-      const j = await res.json();
-      if (!res.ok || !j.ok) {
+      if (error) throw new Error(error.message || "failed");
+      if (!j?.ok) {
         const failed = (j.checks || []).filter((c: any) => !c.ok);
         if (failed.length > 0) {
           const msg = failed.map((c: any) => `❌ ${c.name}: ${c.detail}`).join("\n");
@@ -266,13 +264,10 @@ function RealPage() {
                 ? "⚠️ לעבור למצב LIVE? יישלחו הזמנות אמיתיות לפולימרקט עם כסף אמיתי."
                 : "לחזור למצב DRY RUN (סימולציה ללא הזמנות אמיתיות)?";
               if (!confirm(msg)) return;
-              const res = await fetch("/api/public/hooks/real-set-mode", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ dry_run: !goingLive }),
+              const { data: j, error } = await supabase.functions.invoke("real-set-mode", {
+                body: { dry_run: !goingLive },
               });
-              const j = await res.json();
-              if (!res.ok) toast.error(j.error || "failed");
+              if (error || !j?.ok) toast.error(error?.message || j?.error || "failed");
               else { toast.success(goingLive ? "🔴 LIVE mode" : "🟡 DRY RUN"); await load(); }
             }}
           >

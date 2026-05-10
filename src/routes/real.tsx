@@ -71,6 +71,27 @@ type Config = {
   last_run_skipped: number | null;
   last_run_status: string | null;
   last_run_error: string | null;
+  execution_mode: "paper" | "live_compliant_only";
+  last_geo_check_at: string | null;
+  last_geo_country: string | null;
+  last_geo_blocked: boolean | null;
+  worker_last_seen_at: string | null;
+};
+
+type Intent = {
+  id: number;
+  created_at: string;
+  position_id: number | null;
+  condition_id: string;
+  token_id: string;
+  side: string;
+  price: number;
+  shares: number;
+  size_usd: number | null;
+  status: string;
+  order_id: string | null;
+  error: string | null;
+  geo_country: string | null;
 };
 
 export const Route = createFileRoute("/real")({
@@ -143,6 +164,7 @@ function RealPage() {
   const [pnlPage, setPnlPage] = useState(1);
   const PNL_PAGE_SIZE = 20;
   const [lastBotRun, setLastBotRun] = useState<string | null>(null);
+  const [intents, setIntents] = useState<Intent[]>([]);
 
   const closedFiltered = closed.filter((p) => {
     const pnl = Number(p.pnl_usd ?? 0);
@@ -167,17 +189,19 @@ function RealPage() {
     .reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
 
   async function load() {
-    const [{ data: o }, { data: c }, { data: cfg }, { data: lastPos }] = await Promise.all([
+    const [{ data: o }, { data: c }, { data: cfg }, { data: lastPos }, { data: ints }] = await Promise.all([
       supabase.from("real_positions").select("*").eq("status", "OPEN").order("opened_at", { ascending: false }),
       supabase.from("real_positions").select("*").eq("status", "CLOSED").order("closed_at", { ascending: false }).limit(500),
       supabase.from("real_bot_config").select("*").eq("id", 1).single(),
       supabase.from("real_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
+      supabase.from("execution_intents").select("*").order("created_at", { ascending: false }).limit(30),
     ]);
     const openWithMarkets = await attachMarketData((o as Position[]) || []);
     const closedFiltered = ((c as Position[]) || []).filter((p) => Number(p.pnl_usd ?? 0) !== 0);
     const closedWithMarkets = await attachMarketData(closedFiltered);
     setOpen(openWithMarkets);
     setClosed(closedWithMarkets);
+    setIntents((ints as Intent[]) || []);
     const realCfg = cfg as Config | null;
     setConfig(realCfg);
     const lp = (lastPos as any[])?.[0];
@@ -255,33 +279,52 @@ function RealPage() {
       <TopNav />
       <div className="mx-auto max-w-6xl p-4 space-y-4">
         {/* Mode banner */}
-        <div className={`rounded-lg border-2 p-3 flex items-center gap-2 flex-wrap ${config?.dry_run ? "border-yellow-500/50 bg-yellow-500/10" : "border-red-500/50 bg-red-500/10"}`}>
-          <AlertTriangle className={`h-5 w-5 ${config?.dry_run ? "text-yellow-500" : "text-red-500"}`} />
-          <div className="text-sm flex-1">
-            <b>💵 Real Money — {config?.dry_run ? "DRY RUN" : "LIVE 🔴"}</b>
-            {config?.dry_run
-              ? <span className="text-muted-foreground"> (סימולציה — לא נשלחות הזמנות אמיתיות לפולימרקט)</span>
-              : <span className="text-muted-foreground"> (הזמנות נשלחות לפולימרקט CLOB עם כסף אמיתי)</span>}
-          </div>
-          <Button
-            size="sm"
-            variant={config?.dry_run ? "destructive" : "outline"}
-            onClick={async () => {
-              const goingLive = !!config?.dry_run;
-              const msg = goingLive
-                ? "⚠️ לעבור למצב LIVE? יישלחו הזמנות אמיתיות לפולימרקט עם כסף אמיתי."
-                : "לחזור למצב DRY RUN (סימולציה ללא הזמנות אמיתיות)?";
-              if (!confirm(msg)) return;
-              const { data: j, error } = await supabase.functions.invoke("real-set-mode", {
-                body: { dry_run: !goingLive },
-              });
-              if (error || !j?.ok) toast.error(error?.message || j?.error || "failed");
-              else { toast.success(goingLive ? "🔴 LIVE mode" : "🟡 DRY RUN"); await load(); }
-            }}
-          >
-            {config?.dry_run ? "עבור ל-LIVE" : "חזור ל-DRY RUN"}
-          </Button>
-        </div>
+        {(() => {
+          const mode = config?.execution_mode ?? "paper";
+          const isLiveMode = mode === "live_compliant_only";
+          const workerSeenAt = config?.worker_last_seen_at ? new Date(config.worker_last_seen_at).getTime() : 0;
+          const workerAgeSec = workerSeenAt ? Math.round((Date.now() - workerSeenAt) / 1000) : null;
+          const workerOnline = workerAgeSec != null && workerAgeSec < 120;
+          const geoBlocked = !!config?.last_geo_blocked;
+          const country = config?.last_geo_country ?? "?";
+          let label = "🟡 PAPER MODE";
+          let cls = "border-yellow-500/50 bg-yellow-500/10";
+          let iconCls = "text-yellow-500";
+          if (isLiveMode && geoBlocked) { label = `🔴 GEO BLOCKED (${country})`; cls = "border-red-500/60 bg-red-500/15"; iconCls = "text-red-500"; }
+          else if (isLiveMode && !workerOnline) { label = `⚫ WORKER OFFLINE${workerAgeSec != null ? ` (${workerAgeSec}s ago)` : ""}`; cls = "border-zinc-500/60 bg-zinc-500/15"; iconCls = "text-zinc-400"; }
+          else if (isLiveMode && workerOnline) { label = `🟢 LIVE COMPLIANT — worker ${workerAgeSec}s ago · ${country}`; cls = "border-green-500/60 bg-green-500/15"; iconCls = "text-green-500"; }
+          return (
+            <div className={`rounded-lg border-2 p-3 flex items-center gap-2 flex-wrap ${cls}`}>
+              <AlertTriangle className={`h-5 w-5 ${iconCls}`} />
+              <div className="text-sm flex-1">
+                <b>💵 {label}</b>
+                <span className="text-muted-foreground">
+                  {isLiveMode
+                    ? " (Supabase שולח intents · ה-worker שלך בבית מבצע ב-CLOB אחרי geoblock check)"
+                    : " (סימולציה בלבד — לא נשלחות הזמנות לפולימרקט)"}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant={isLiveMode ? "outline" : "destructive"}
+                onClick={async () => {
+                  const next = isLiveMode ? "paper" : "live_compliant_only";
+                  const msg = next === "live_compliant_only"
+                    ? "⚠️ לעבור ל-LIVE COMPLIANT? Supabase יתחיל לשלוח intents ל-worker המקומי שלך. הוודא שה-worker רץ במחשב!"
+                    : "לחזור ל-PAPER MODE? לא יישלחו עוד intents חדשים.";
+                  if (!confirm(msg)) return;
+                  const { data: j, error } = await supabase.functions.invoke("real-set-execution-mode", {
+                    body: { execution_mode: next },
+                  });
+                  if (error || !j?.ok) toast.error(error?.message || j?.error || "failed");
+                  else { toast.success(next === "live_compliant_only" ? "🟢 LIVE COMPLIANT" : "🟡 PAPER"); await load(); }
+                }}
+              >
+                {isLiveMode ? "חזור ל-PAPER" : "עבור ל-LIVE COMPLIANT"}
+              </Button>
+            </div>
+          );
+        })()}
 
         {isHalted && (
           <div className="rounded-lg border-2 border-red-500/60 bg-red-500/15 p-3 text-sm">
@@ -372,6 +415,7 @@ function RealPage() {
             <TabsTrigger value="pnl">📊 רווח והפסד</TabsTrigger>
             <TabsTrigger value="open">פתוחות ({open.length})</TabsTrigger>
             <TabsTrigger value="closed">סגורות ({closed.length})</TabsTrigger>
+            <TabsTrigger value="intents">⚙️ Execution Queue ({intents.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pnl">
@@ -539,6 +583,60 @@ function RealPage() {
               <Card><CardContent className="p-6 text-center text-muted-foreground">אין פוזיציות שתואמות את הפילטר.</CardContent></Card>
             )}
             {closedFiltered.map((p) => <PositionCard key={p.id} p={p} isOpen={false} />)}
+          </TabsContent>
+
+          <TabsContent value="intents" className="space-y-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">תור הביצוע (Intents)</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {intents.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">
+                    אין intents עדיין. עבור ל-LIVE COMPLIANT והרץ את ה-worker כדי להתחיל.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="text-right p-2">זמן</th>
+                          <th className="text-center p-2">סטטוס</th>
+                          <th className="text-center p-2">צד</th>
+                          <th className="text-center p-2">מחיר</th>
+                          <th className="text-center p-2">Shares</th>
+                          <th className="text-center p-2">$</th>
+                          <th className="text-right p-2">Order ID / Error</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {intents.map((it) => {
+                          const color =
+                            it.status === "EXECUTED" ? "text-green-500"
+                            : it.status === "GEO_BLOCKED" ? "text-red-500"
+                            : it.status === "FAILED" ? "text-orange-500"
+                            : it.status === "EXPIRED" ? "text-muted-foreground"
+                            : "text-blue-500";
+                          return (
+                            <tr key={it.id} className="border-t">
+                              <td className="p-2 whitespace-nowrap">{fmtTime(it.created_at)}</td>
+                              <td className="p-2 text-center"><span className={color}><b>{it.status}</b></span></td>
+                              <td className="p-2 text-center">{it.side}</td>
+                              <td className="p-2 text-center">{Number(it.price).toFixed(3)}</td>
+                              <td className="p-2 text-center">{Number(it.shares).toFixed(2)}</td>
+                              <td className="p-2 text-center">${Number(it.size_usd ?? 0).toFixed(0)}</td>
+                              <td className="p-2 text-xs text-muted-foreground truncate max-w-[280px]">
+                                {it.order_id ?? it.error ?? (it.geo_country ? `geo: ${it.geo_country}` : "—")}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

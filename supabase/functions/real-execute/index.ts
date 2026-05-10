@@ -19,65 +19,8 @@ async function fetchPrice(asset: string | null): Promise<number | null> {
   }
 }
 
-// Lazily import @polymarket/clob-client and place a real BUY limit order on Polygon CLOB.
-// Uses EIP-712 signing via @ethersproject/wallet under the hood.
-async function placeLiveBuyOrder(
-  tokenId: string,
-  price: number,
-  shares: number,
-): Promise<{ orderId: string | null; error: string | null }> {
-  try {
-    const pk = Deno.env.get("POLYMARKET_PRIVATE_KEY");
-    const apiKey = Deno.env.get("POLYMARKET_API_KEY");
-    const apiSecret = Deno.env.get("POLYMARKET_API_SECRET");
-    const passphrase = Deno.env.get("POLYMARKET_API_PASSPHRASE");
-    const funder = Deno.env.get("POLYMARKET_FUNDER_ADDRESS") || undefined;
-    const sigTypeRaw = Deno.env.get("POLYMARKET_SIG_TYPE");
-    if (!pk || !apiKey || !apiSecret || !passphrase) {
-      return { orderId: null, error: "missing POLYMARKET_* env vars" };
-    }
-    if (!tokenId) return { orderId: null, error: "missing tokenId/asset" };
-
-    const [{ ClobClient, OrderType, Side }, walletMod] = await Promise.all([
-      import("https://esm.sh/@polymarket/clob-client@4.21.0?target=deno"),
-      import("https://esm.sh/@ethersproject/wallet@5.7.0?target=deno"),
-    ]);
-    const Wallet = (walletMod as any).Wallet;
-
-    const wallet = new Wallet(pk.startsWith("0x") ? pk : `0x${pk}`);
-    const creds = { key: apiKey, secret: apiSecret, passphrase };
-    const signatureType = sigTypeRaw ? Number(sigTypeRaw) : undefined;
-
-    const client = new (ClobClient as any)(
-      "https://clob.polymarket.com",
-      137,
-      wallet,
-      creds,
-      signatureType,
-      funder,
-    );
-
-    const roundedPrice = Math.round(price * 1000) / 1000;
-    const roundedSize = Math.round(shares * 100) / 100;
-    if (roundedSize <= 0) return { orderId: null, error: "size rounded to 0" };
-
-    const feeRateBps = Number(await client.getFeeRateBps(tokenId));
-    const signed = await client.createOrder({
-      tokenID: tokenId,
-      price: roundedPrice,
-      side: Side.BUY,
-      size: roundedSize,
-      feeRateBps,
-    });
-    const resp: any = await client.postOrder(signed, OrderType.GTC);
-    if (!resp?.success) {
-      return { orderId: null, error: resp?.errorMsg || resp?.error || "order rejected" };
-    }
-    return { orderId: resp.orderID ?? resp.orderId ?? null, error: null };
-  } catch (e: any) {
-    return { orderId: null, error: e?.message ?? String(e) };
-  }
-}
+// LIVE order placement is delegated to the local worker (compliant execution gate).
+// This edge function only writes intents to the queue; the worker pulls them.
 
 // Real-money sizing: 10 / 20 / 30
 function sizeForScore(score: number): number {
@@ -285,15 +228,7 @@ Deno.serve(async (req) => {
         const reason = buildReason(s);
         const exitStrategy = buildExitStrategy(Number(cfg.tp_pct), Number(cfg.sl_pct), Number(cfg.time_stop_hours), entry);
 
-        let orderId: string | null = null;
-        if (!cfg.dry_run) {
-          const live = await placeLiveBuyOrder(s.asset, entry, shares);
-          if (!live.orderId) {
-            skipped.push({ condition_id: s.condition_id, why: `live order failed: ${live.error}` });
-            continue;
-          }
-          orderId = live.orderId;
-        }
+        const isLive = cfg.execution_mode === "live_compliant_only" && !cfg.dry_run;
 
         const { error: insErr, data: ins } = await supabaseAdmin.from("real_positions").insert({
           signal_id: s.id, condition_id: s.condition_id, asset: s.asset, outcome: s.outcome, title: s.title,
@@ -304,11 +239,25 @@ Deno.serve(async (req) => {
           exit_strategy: exitStrategy, current_price: entry, last_price_at: new Date().toISOString(),
           status: "OPEN", event_id: market?.event_id ?? null,
           market_volume_usd: market?.volume ?? null, market_liquidity_usd: market?.liquidity ?? null,
-          order_id: orderId, dry_run: !!cfg.dry_run,
+          order_id: null, dry_run: !isLive,
         }).select("id").single();
 
-        if (insErr) skipped.push({ condition_id: s.condition_id, why: insErr.message });
-        else { opened.push({ id: ins?.id, score: s.score, sizeUsd, entry, dry_run: !!cfg.dry_run }); currentOpen += 1; }
+        if (insErr) { skipped.push({ condition_id: s.condition_id, why: insErr.message }); continue; }
+
+        // LIVE compliant mode → enqueue intent for the local worker (geoblock + CLOB happens there)
+        if (isLive && ins?.id) {
+          const { error: intentErr } = await supabaseAdmin.from("execution_intents").insert({
+            position_id: ins.id, condition_id: s.condition_id, token_id: s.asset,
+            side: "BUY", price: Math.round(entry * 1000) / 1000,
+            shares: Math.round(shares * 100) / 100, size_usd: sizeUsd, status: "PENDING",
+          });
+          if (intentErr) {
+            skipped.push({ condition_id: s.condition_id, why: `intent enqueue failed: ${intentErr.message}` });
+          }
+        }
+
+        opened.push({ id: ins?.id, score: s.score, sizeUsd, entry, live: isLive });
+        currentOpen += 1;
       }
     }
   }

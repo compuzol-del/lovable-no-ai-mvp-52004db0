@@ -118,6 +118,80 @@ export type Database = {
         }
         Relationships: []
       }
+      execution_intents: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          condition_id: string
+          created_at: string
+          error: string | null
+          executed_at: string | null
+          expires_at: string
+          geo_country: string | null
+          geo_ip: string | null
+          id: number
+          order_id: string | null
+          position_id: number | null
+          price: number
+          shares: number
+          side: string
+          size_usd: number | null
+          status: string
+          token_id: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          condition_id: string
+          created_at?: string
+          error?: string | null
+          executed_at?: string | null
+          expires_at?: string
+          geo_country?: string | null
+          geo_ip?: string | null
+          id?: number
+          order_id?: string | null
+          position_id?: number | null
+          price: number
+          shares: number
+          side?: string
+          size_usd?: number | null
+          status?: string
+          token_id: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          condition_id?: string
+          created_at?: string
+          error?: string | null
+          executed_at?: string | null
+          expires_at?: string
+          geo_country?: string | null
+          geo_ip?: string | null
+          id?: number
+          order_id?: string | null
+          position_id?: number | null
+          price?: number
+          shares?: number
+          side?: string
+          size_usd?: number | null
+          status?: string
+          token_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execution_intents_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "real_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       markets: {
         Row: {
           category: string | null
@@ -540,8 +614,12 @@ export type Database = {
           dynamic_exits: boolean
           dynamic_time_stop: boolean
           enabled: boolean
+          execution_mode: string
           fee_pct: number
           id: number
+          last_geo_blocked: boolean | null
+          last_geo_check_at: string | null
+          last_geo_country: string | null
           last_run_at: string | null
           last_run_closed: number
           last_run_error: string | null
@@ -564,6 +642,7 @@ export type Database = {
           tp_pct: number
           updated_at: string
           whale_reversal_exit: boolean
+          worker_last_seen_at: string | null
         }
         Insert: {
           breakeven_trigger_pct?: number
@@ -573,8 +652,12 @@ export type Database = {
           dynamic_exits?: boolean
           dynamic_time_stop?: boolean
           enabled?: boolean
+          execution_mode?: string
           fee_pct?: number
           id?: number
+          last_geo_blocked?: boolean | null
+          last_geo_check_at?: string | null
+          last_geo_country?: string | null
           last_run_at?: string | null
           last_run_closed?: number
           last_run_error?: string | null
@@ -597,6 +680,7 @@ export type Database = {
           tp_pct?: number
           updated_at?: string
           whale_reversal_exit?: boolean
+          worker_last_seen_at?: string | null
         }
         Update: {
           breakeven_trigger_pct?: number
@@ -606,8 +690,12 @@ export type Database = {
           dynamic_exits?: boolean
           dynamic_time_stop?: boolean
           enabled?: boolean
+          execution_mode?: string
           fee_pct?: number
           id?: number
+          last_geo_blocked?: boolean | null
+          last_geo_check_at?: string | null
+          last_geo_country?: string | null
           last_run_at?: string | null
           last_run_closed?: number
           last_run_error?: string | null
@@ -630,6 +718,7 @@ export type Database = {
           tp_pct?: number
           updated_at?: string
           whale_reversal_exit?: boolean
+          worker_last_seen_at?: string | null
         }
         Relationships: []
       }
@@ -1180,6 +1269,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_next_intent: {
+        Args: { _worker_id: string }
+        Returns: {
+          claimed_at: string | null
+          claimed_by: string | null
+          condition_id: string
+          created_at: string
+          error: string | null
+          executed_at: string | null
+          expires_at: string
+          geo_country: string | null
+          geo_ip: string | null
+          id: number
+          order_id: string | null
+          position_id: number | null
+          price: number
+          shares: number
+          side: string
+          size_usd: number | null
+          status: string
+          token_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "execution_intents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_signals_for_horizon: {
         Args: {
           _horizon_key: string

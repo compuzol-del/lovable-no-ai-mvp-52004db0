@@ -65,6 +65,12 @@ type Config = {
   min_entry_price: number;
   max_entry_price: number;
   fee_pct: number;
+  last_run_at: string | null;
+  last_run_opened: number | null;
+  last_run_closed: number | null;
+  last_run_skipped: number | null;
+  last_run_status: string | null;
+  last_run_error: string | null;
 };
 
 export const Route = createFileRoute("/real")({
@@ -172,9 +178,10 @@ function RealPage() {
     const closedWithMarkets = await attachMarketData(closedFiltered);
     setOpen(openWithMarkets);
     setClosed(closedWithMarkets);
-    setConfig(cfg as Config | null);
+    const realCfg = cfg as Config | null;
+    setConfig(realCfg);
     const lp = (lastPos as any[])?.[0];
-    setLastBotRun(lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at) ? lp.closed_at : lp?.opened_at ?? null);
+    setLastBotRun(realCfg?.last_run_at ?? (lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at) ? lp.closed_at : lp?.opened_at ?? null));
     setLoading(false);
   }
 
@@ -190,7 +197,8 @@ function RealPage() {
       const { data: j, error } = await supabase.functions.invoke("real-execute");
       if (error) throw new Error(error.message || "failed");
       if (!j?.ok) throw new Error(j?.error || "failed");
-      toast.success(`Opened ${j.opened} · Closed ${j.closed} · Skipped ${j.skipped}${j.halted ? " · HALTED" : ""}`);
+      const firstSkip = j?.details?.skipped?.[0]?.why;
+      toast.success(`Opened ${j.opened} · Closed ${j.closed} · Skipped ${j.skipped}${j.halted ? " · HALTED" : ""}${firstSkip ? ` · ${firstSkip}` : ""}`, { duration: 8000 });
       await load();
     } catch (e: any) {
       toast.error(e.message);
@@ -285,7 +293,11 @@ function RealPage() {
           <div>
             <h1 className="text-2xl font-bold">💵 Real Bot</h1>
             <p className="text-sm text-muted-foreground">בוט כסף אמיתי — סכומים קטנים, פילטרים מוקשחים, kill-switch יומי</p>
-            <p className="text-xs text-muted-foreground mt-1">🤖 ריצת בוט אחרונה: <b>{fmtTime(lastBotRun)}</b></p>
+            <p className="text-xs text-muted-foreground mt-1">
+              🤖 ריצת בוט אחרונה: <b>{fmtTime(lastBotRun)}</b>
+              {config?.last_run_status ? <> · {config.last_run_status} · O:{config.last_run_opened ?? 0} C:{config.last_run_closed ?? 0} S:{config.last_run_skipped ?? 0}</> : null}
+              {config?.last_run_error ? <> · {config.last_run_error}</> : null}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {config?.enabled ? (

@@ -584,7 +584,60 @@ function RealPage() {
             )}
             {closedFiltered.map((p) => <PositionCard key={p.id} p={p} isOpen={false} />)}
           </TabsContent>
-        </Tabs>
+
+          <TabsContent value="intents" className="space-y-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">תור הביצוע (Intents)</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {intents.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">
+                    אין intents עדיין. עבור ל-LIVE COMPLIANT והרץ את ה-worker כדי להתחיל.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="text-right p-2">זמן</th>
+                          <th className="text-center p-2">סטטוס</th>
+                          <th className="text-center p-2">צד</th>
+                          <th className="text-center p-2">מחיר</th>
+                          <th className="text-center p-2">Shares</th>
+                          <th className="text-center p-2">$</th>
+                          <th className="text-right p-2">Order ID / Error</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {intents.map((it) => {
+                          const color =
+                            it.status === "EXECUTED" ? "text-green-500"
+                            : it.status === "GEO_BLOCKED" ? "text-red-500"
+                            : it.status === "FAILED" ? "text-orange-500"
+                            : it.status === "EXPIRED" ? "text-muted-foreground"
+                            : "text-blue-500";
+                          return (
+                            <tr key={it.id} className="border-t">
+                              <td className="p-2 whitespace-nowrap">{fmtTime(it.created_at)}</td>
+                              <td className="p-2 text-center"><span className={color}><b>{it.status}</b></span></td>
+                              <td className="p-2 text-center">{it.side}</td>
+                              <td className="p-2 text-center">{Number(it.price).toFixed(3)}</td>
+                              <td className="p-2 text-center">{Number(it.shares).toFixed(2)}</td>
+                              <td className="p-2 text-center">${Number(it.size_usd ?? 0).toFixed(0)}</td>
+                              <td className="p-2 text-xs text-muted-foreground truncate max-w-[280px]">
+                                {it.order_id ?? it.error ?? (it.geo_country ? `geo: ${it.geo_country}` : "—")}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
       </div>
     </div>
   );

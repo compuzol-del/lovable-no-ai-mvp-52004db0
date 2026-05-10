@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalletsRouteImport } from './routes/wallets'
 import { Route as TrackerRouteImport } from './routes/tracker'
 import { Route as SignalsRouteImport } from './routes/signals'
+import { Route as RealRouteImport } from './routes/real'
 import { Route as PaperRouteImport } from './routes/paper'
 import { Route as LogicRouteImport } from './routes/logic'
 import { Route as IndexRouteImport } from './routes/index'
@@ -33,6 +34,11 @@ const TrackerRoute = TrackerRouteImport.update({
 const SignalsRoute = SignalsRouteImport.update({
   id: '/signals',
   path: '/signals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RealRoute = RealRouteImport.update({
+  id: '/real',
+  path: '/real',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaperRoute = PaperRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
+  '/real': typeof RealRoute
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
+  '/real': typeof RealRoute
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
+  '/real': typeof RealRoute
   '/signals': typeof SignalsRoute
   '/tracker': typeof TrackerRoute
   '/wallets': typeof WalletsRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/logic'
     | '/paper'
+    | '/real'
     | '/signals'
     | '/tracker'
     | '/wallets'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/'
     | '/logic'
     | '/paper'
+    | '/real'
     | '/signals'
     | '/tracker'
     | '/wallets'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/'
     | '/logic'
     | '/paper'
+    | '/real'
     | '/signals'
     | '/tracker'
     | '/wallets'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LogicRoute: typeof LogicRoute
   PaperRoute: typeof PaperRoute
+  RealRoute: typeof RealRoute
   SignalsRoute: typeof SignalsRoute
   TrackerRoute: typeof TrackerRoute
   WalletsRoute: typeof WalletsRoute
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       path: '/signals'
       fullPath: '/signals'
       preLoaderRoute: typeof SignalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/real': {
+      id: '/real'
+      path: '/real'
+      fullPath: '/real'
+      preLoaderRoute: typeof RealRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/paper': {
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LogicRoute: LogicRoute,
   PaperRoute: PaperRoute,
+  RealRoute: RealRoute,
   SignalsRoute: SignalsRoute,
   TrackerRoute: TrackerRoute,
   WalletsRoute: WalletsRoute,

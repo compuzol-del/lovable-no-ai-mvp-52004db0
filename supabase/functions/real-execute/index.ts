@@ -61,12 +61,13 @@ async function placeLiveBuyOrder(
     const roundedSize = Math.round(shares * 100) / 100;
     if (roundedSize <= 0) return { orderId: null, error: "size rounded to 0" };
 
+    const feeRateBps = Number(await client.getFeeRateBps(tokenId));
     const signed = await client.createOrder({
       tokenID: tokenId,
       price: roundedPrice,
       side: Side.BUY,
       size: roundedSize,
-      feeRateBps: 0,
+      feeRateBps,
     });
     const resp: any = await client.postOrder(signed, OrderType.GTC);
     if (!resp?.success) {

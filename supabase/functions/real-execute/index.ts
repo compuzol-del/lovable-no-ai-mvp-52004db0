@@ -39,8 +39,8 @@ async function placeLiveBuyOrder(
     if (!tokenId) return { orderId: null, error: "missing tokenId/asset" };
 
     const [{ ClobClient, OrderType, Side }, walletMod] = await Promise.all([
-      import("npm:@polymarket/clob-client@4.21.0"),
-      import("npm:@ethersproject/wallet@5.7.0"),
+      import("https://esm.sh/@polymarket/clob-client@4.21.0?target=deno"),
+      import("https://esm.sh/@ethersproject/wallet@5.7.0?target=deno"),
     ]);
     const Wallet = (walletMod as any).Wallet;
 
@@ -108,6 +108,17 @@ function nextUtcMidnight(): Date {
   return d;
 }
 
+async function recordLastRun(supabaseAdmin: any, status: string, opened: any[], closed: any[], skipped: any[], error: string | null = null) {
+  await supabaseAdmin.from("real_bot_config").update({
+    last_run_at: new Date().toISOString(),
+    last_run_opened: opened.length,
+    last_run_closed: closed.length,
+    last_run_skipped: skipped.length,
+    last_run_status: status,
+    last_run_error: error ?? skipped[0]?.why ?? null,
+  }).eq("id", 1);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -116,12 +127,13 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const { data: cfg } = await supabaseAdmin.from("real_bot_config").select("*").eq("id", 1).single();
-  if (!cfg) return new Response(JSON.stringify({ error: "no config" }), { status: 500, headers: corsHeaders });
-
   const opened: any[] = [];
   const closed: any[] = [];
   const skipped: any[] = [];
+
+  try {
+  const { data: cfg } = await supabaseAdmin.from("real_bot_config").select("*").eq("id", 1).single();
+  if (!cfg) return new Response(JSON.stringify({ error: "no config" }), { status: 500, headers: corsHeaders });
 
   // 1. Refresh open positions
   const { data: openPos } = await supabaseAdmin.from("real_positions").select("*").eq("status", "OPEN");
@@ -294,10 +306,21 @@ Deno.serve(async (req) => {
     }
   }
 
+  const status = halted ? "HALTED" : opened.length > 0 || closed.length > 0 ? "OK" : skipped.length > 0 ? "SKIPPED" : "NO_ACTION";
+  await recordLastRun(supabaseAdmin, status, opened, closed, skipped);
+
   return new Response(JSON.stringify({
     ok: true, enabled: cfg.enabled, dry_run: !!cfg.dry_run, halted,
     dailyPnl: Number(dailyPnl.toFixed(2)), lossLimit,
     opened: opened.length, closed: closed.length, skipped: skipped.length,
     details: { opened, closed, skipped: skipped.slice(0, 10) },
   }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e: any) {
+    const message = e?.message ?? String(e);
+    await recordLastRun(supabaseAdmin, "ERROR", opened, closed, skipped, message);
+    return new Response(JSON.stringify({ ok: false, error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 });

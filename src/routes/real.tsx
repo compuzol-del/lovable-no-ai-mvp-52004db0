@@ -415,6 +415,7 @@ function RealPage() {
             <TabsTrigger value="pnl">📊 רווח והפסד</TabsTrigger>
             <TabsTrigger value="open">פתוחות ({open.length})</TabsTrigger>
             <TabsTrigger value="closed">סגורות ({closed.length})</TabsTrigger>
+            <TabsTrigger value="intents">⚙️ Execution Queue ({intents.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pnl">

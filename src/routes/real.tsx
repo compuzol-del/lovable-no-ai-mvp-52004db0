@@ -130,6 +130,7 @@ function RealPage() {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [filterFrom, setFilterFrom] = useState<string>("");
   const [filterTo, setFilterTo] = useState<string>("");
   const [filterResult, setFilterResult] = useState<"all" | "win" | "loss">("all");

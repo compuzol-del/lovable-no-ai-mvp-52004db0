@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "../../../../integrations/supabase/client.server";
+import { placeBuyOrder } from "../../../../integrations/polymarket/client.server";
 
 const POLYMARKET_CLOB = "https://clob.polymarket.com";
 
@@ -274,15 +275,18 @@ export const Route = createFileRoute("/api/public/hooks/real-execute")({
               );
 
               // === Polymarket order placement ===
-              // In dry_run mode we only persist to DB. When dry_run=false and POLYMARKET_*
-              // secrets exist, this is where the CLOB order would be sent.
               let orderId: string | null = null;
               if (!cfg.dry_run) {
-                // TODO: implement real Polymarket CLOB order placement using POLYMARKET_PRIVATE_KEY,
-                // POLYMARKET_API_KEY, POLYMARKET_API_SECRET, POLYMARKET_API_PASSPHRASE.
-                // For now, refuse to open a live order to avoid silent fake "live" trades.
-                skipped.push({ condition_id: s.condition_id, why: "live mode but order placement not implemented yet" });
-                continue;
+                if (!s.asset) {
+                  skipped.push({ condition_id: s.condition_id, why: "no asset/token id" });
+                  continue;
+                }
+                const res = await placeBuyOrder(s.asset, entry, shares);
+                if (!res.success) {
+                  skipped.push({ condition_id: s.condition_id, why: `order failed: ${res.error}` });
+                  continue;
+                }
+                orderId = res.orderId;
               }
 
               const { error: insErr, data: ins } = await supabaseAdmin

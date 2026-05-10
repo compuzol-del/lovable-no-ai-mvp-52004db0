@@ -249,12 +249,35 @@ function RealPage() {
       <TopNav />
       <div className="mx-auto max-w-6xl p-4 space-y-4">
         {/* Mode banner */}
-        <div className={`rounded-lg border-2 p-3 flex items-center gap-2 ${config?.dry_run ? "border-yellow-500/50 bg-yellow-500/10" : "border-red-500/50 bg-red-500/10"}`}>
+        <div className={`rounded-lg border-2 p-3 flex items-center gap-2 flex-wrap ${config?.dry_run ? "border-yellow-500/50 bg-yellow-500/10" : "border-red-500/50 bg-red-500/10"}`}>
           <AlertTriangle className={`h-5 w-5 ${config?.dry_run ? "text-yellow-500" : "text-red-500"}`} />
-          <div className="text-sm">
-            <b>💵 Real Money — {config?.dry_run ? "DRY RUN" : "LIVE"}</b>
-            {config?.dry_run && <span className="text-muted-foreground"> (לא נשלחות הזמנות אמיתיות לפולימרקט עד שיצורפו מפתחות API)</span>}
+          <div className="text-sm flex-1">
+            <b>💵 Real Money — {config?.dry_run ? "DRY RUN" : "LIVE 🔴"}</b>
+            {config?.dry_run
+              ? <span className="text-muted-foreground"> (סימולציה — לא נשלחות הזמנות אמיתיות לפולימרקט)</span>
+              : <span className="text-muted-foreground"> (הזמנות נשלחות לפולימרקט CLOB עם כסף אמיתי)</span>}
           </div>
+          <Button
+            size="sm"
+            variant={config?.dry_run ? "destructive" : "outline"}
+            onClick={async () => {
+              const goingLive = !!config?.dry_run;
+              const msg = goingLive
+                ? "⚠️ לעבור למצב LIVE? יישלחו הזמנות אמיתיות לפולימרקט עם כסף אמיתי."
+                : "לחזור למצב DRY RUN (סימולציה ללא הזמנות אמיתיות)?";
+              if (!confirm(msg)) return;
+              const res = await fetch("/api/public/hooks/real-set-mode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dry_run: !goingLive }),
+              });
+              const j = await res.json();
+              if (!res.ok) toast.error(j.error || "failed");
+              else { toast.success(goingLive ? "🔴 LIVE mode" : "🟡 DRY RUN"); await load(); }
+            }}
+          >
+            {config?.dry_run ? "עבור ל-LIVE" : "חזור ל-DRY RUN"}
+          </Button>
         </div>
 
         {isHalted && (

@@ -542,6 +542,12 @@ export type Database = {
           enabled: boolean
           fee_pct: number
           id: number
+          last_run_at: string | null
+          last_run_closed: number
+          last_run_error: string | null
+          last_run_opened: number
+          last_run_skipped: number
+          last_run_status: string | null
           max_entry_price: number
           max_open_per_event: number
           max_open_total: number
@@ -569,6 +575,12 @@ export type Database = {
           enabled?: boolean
           fee_pct?: number
           id?: number
+          last_run_at?: string | null
+          last_run_closed?: number
+          last_run_error?: string | null
+          last_run_opened?: number
+          last_run_skipped?: number
+          last_run_status?: string | null
           max_entry_price?: number
           max_open_per_event?: number
           max_open_total?: number
@@ -596,6 +608,12 @@ export type Database = {
           enabled?: boolean
           fee_pct?: number
           id?: number
+          last_run_at?: string | null
+          last_run_closed?: number
+          last_run_error?: string | null
+          last_run_opened?: number
+          last_run_skipped?: number
+          last_run_status?: string | null
           max_entry_price?: number
           max_open_per_event?: number
           max_open_total?: number

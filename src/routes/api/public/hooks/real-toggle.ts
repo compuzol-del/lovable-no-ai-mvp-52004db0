@@ -40,7 +40,7 @@ export const Route = createFileRoute("/api/public/hooks/real-toggle")({
           checks.push({
             name: "daily_halt",
             ok: false,
-            detail: `הבוט מושהה עד ${new Date(cfg.daily_halt_until).toISOString()} (שלח clear_halt:true כדי לאפס)`,
+            detail: `הבוט מושהה עד ${new Date(cfg.daily_halt_until as string).toISOString()} (שלח clear_halt:true כדי לאפס)`,
           });
         } else {
           checks.push({ name: "daily_halt", ok: true, detail: haltActive ? "halt cleared by request" : "no halt" });

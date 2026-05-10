@@ -18,6 +18,7 @@ import { Route as LogicRouteImport } from './routes/logic'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicHooksScanWalletsRouteImport } from './routes/api/public/hooks/scan-wallets'
 import { Route as ApiPublicHooksRefreshWhalePerformanceRouteImport } from './routes/api/public/hooks/refresh-whale-performance'
+import { Route as ApiPublicHooksRealToggleRouteImport } from './routes/api/public/hooks/real-toggle'
 import { Route as ApiPublicHooksRealExecuteRouteImport } from './routes/api/public/hooks/real-execute'
 import { Route as ApiPublicHooksPaperExecuteRouteImport } from './routes/api/public/hooks/paper-execute'
 import { Route as ApiPublicHooksComputeSignalsRouteImport } from './routes/api/public/hooks/compute-signals'
@@ -69,6 +70,12 @@ const ApiPublicHooksRefreshWhalePerformanceRoute =
     path: '/api/public/hooks/refresh-whale-performance',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRealToggleRoute =
+  ApiPublicHooksRealToggleRouteImport.update({
+    id: '/api/public/hooks/real-toggle',
+    path: '/api/public/hooks/real-toggle',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksRealExecuteRoute =
   ApiPublicHooksRealExecuteRouteImport.update({
     id: '/api/public/hooks/real-execute',
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
   '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
   '/api/public/hooks/real-execute': typeof ApiPublicHooksRealExecuteRoute
+  '/api/public/hooks/real-toggle': typeof ApiPublicHooksRealToggleRoute
   '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
   '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
@@ -113,6 +121,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
   '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
   '/api/public/hooks/real-execute': typeof ApiPublicHooksRealExecuteRoute
+  '/api/public/hooks/real-toggle': typeof ApiPublicHooksRealToggleRoute
   '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
   '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
@@ -128,6 +137,7 @@ export interface FileRoutesById {
   '/api/public/hooks/compute-signals': typeof ApiPublicHooksComputeSignalsRoute
   '/api/public/hooks/paper-execute': typeof ApiPublicHooksPaperExecuteRoute
   '/api/public/hooks/real-execute': typeof ApiPublicHooksRealExecuteRoute
+  '/api/public/hooks/real-toggle': typeof ApiPublicHooksRealToggleRoute
   '/api/public/hooks/refresh-whale-performance': typeof ApiPublicHooksRefreshWhalePerformanceRoute
   '/api/public/hooks/scan-wallets': typeof ApiPublicHooksScanWalletsRoute
 }
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/compute-signals'
     | '/api/public/hooks/paper-execute'
     | '/api/public/hooks/real-execute'
+    | '/api/public/hooks/real-toggle'
     | '/api/public/hooks/refresh-whale-performance'
     | '/api/public/hooks/scan-wallets'
   fileRoutesByTo: FileRoutesByTo
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/compute-signals'
     | '/api/public/hooks/paper-execute'
     | '/api/public/hooks/real-execute'
+    | '/api/public/hooks/real-toggle'
     | '/api/public/hooks/refresh-whale-performance'
     | '/api/public/hooks/scan-wallets'
   id:
@@ -172,6 +184,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/compute-signals'
     | '/api/public/hooks/paper-execute'
     | '/api/public/hooks/real-execute'
+    | '/api/public/hooks/real-toggle'
     | '/api/public/hooks/refresh-whale-performance'
     | '/api/public/hooks/scan-wallets'
   fileRoutesById: FileRoutesById
@@ -187,6 +200,7 @@ export interface RootRouteChildren {
   ApiPublicHooksComputeSignalsRoute: typeof ApiPublicHooksComputeSignalsRoute
   ApiPublicHooksPaperExecuteRoute: typeof ApiPublicHooksPaperExecuteRoute
   ApiPublicHooksRealExecuteRoute: typeof ApiPublicHooksRealExecuteRoute
+  ApiPublicHooksRealToggleRoute: typeof ApiPublicHooksRealToggleRoute
   ApiPublicHooksRefreshWhalePerformanceRoute: typeof ApiPublicHooksRefreshWhalePerformanceRoute
   ApiPublicHooksScanWalletsRoute: typeof ApiPublicHooksScanWalletsRoute
 }
@@ -256,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRefreshWhalePerformanceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/real-toggle': {
+      id: '/api/public/hooks/real-toggle'
+      path: '/api/public/hooks/real-toggle'
+      fullPath: '/api/public/hooks/real-toggle'
+      preLoaderRoute: typeof ApiPublicHooksRealToggleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/real-execute': {
       id: '/api/public/hooks/real-execute'
       path: '/api/public/hooks/real-execute'
@@ -291,6 +312,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksComputeSignalsRoute: ApiPublicHooksComputeSignalsRoute,
   ApiPublicHooksPaperExecuteRoute: ApiPublicHooksPaperExecuteRoute,
   ApiPublicHooksRealExecuteRoute: ApiPublicHooksRealExecuteRoute,
+  ApiPublicHooksRealToggleRoute: ApiPublicHooksRealToggleRoute,
   ApiPublicHooksRefreshWhalePerformanceRoute:
     ApiPublicHooksRefreshWhalePerformanceRoute,
   ApiPublicHooksScanWalletsRoute: ApiPublicHooksScanWalletsRoute,

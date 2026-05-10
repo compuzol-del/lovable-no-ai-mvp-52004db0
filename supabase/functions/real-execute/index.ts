@@ -232,8 +232,14 @@ Deno.serve(async (req) => {
         .order("score", { ascending: false }).limit(50);
 
       let currentOpen = openCount ?? 0;
+      const attemptedInRun = new Set<string>();
       for (const s of signals || []) {
         if (currentOpen >= Number(cfg.max_open_total)) break;
+        const signalKey = `${s.condition_id}:${s.outcome ?? ""}`;
+        if (attemptedInRun.has(signalKey)) {
+          skipped.push({ condition_id: s.condition_id, why: "duplicate signal in run" }); continue;
+        }
+        attemptedInRun.add(signalKey);
         if (s.price_drift_pct != null && Number(s.price_drift_pct) < Number(cfg.min_drift_pct)) {
           skipped.push({ condition_id: s.condition_id, why: `drift ${s.price_drift_pct}` }); continue;
         }

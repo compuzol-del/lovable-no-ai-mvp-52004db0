@@ -266,8 +266,13 @@ function RealPage() {
                 ? "⚠️ לעבור למצב LIVE? יישלחו הזמנות אמיתיות לפולימרקט עם כסף אמיתי."
                 : "לחזור למצב DRY RUN (סימולציה ללא הזמנות אמיתיות)?";
               if (!confirm(msg)) return;
-              const { error } = await supabase.from("real_bot_config").update({ dry_run: !goingLive }).eq("id", 1);
-              if (error) toast.error(error.message);
+              const res = await fetch("/api/public/hooks/real-set-mode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dry_run: !goingLive }),
+              });
+              const j = await res.json();
+              if (!res.ok) toast.error(j.error || "failed");
               else { toast.success(goingLive ? "🔴 LIVE mode" : "🟡 DRY RUN"); await load(); }
             }}
           >

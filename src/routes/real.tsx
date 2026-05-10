@@ -279,33 +279,52 @@ function RealPage() {
       <TopNav />
       <div className="mx-auto max-w-6xl p-4 space-y-4">
         {/* Mode banner */}
-        <div className={`rounded-lg border-2 p-3 flex items-center gap-2 flex-wrap ${config?.dry_run ? "border-yellow-500/50 bg-yellow-500/10" : "border-red-500/50 bg-red-500/10"}`}>
-          <AlertTriangle className={`h-5 w-5 ${config?.dry_run ? "text-yellow-500" : "text-red-500"}`} />
-          <div className="text-sm flex-1">
-            <b>💵 Real Money — {config?.dry_run ? "DRY RUN" : "LIVE 🔴"}</b>
-            {config?.dry_run
-              ? <span className="text-muted-foreground"> (סימולציה — לא נשלחות הזמנות אמיתיות לפולימרקט)</span>
-              : <span className="text-muted-foreground"> (הזמנות נשלחות לפולימרקט CLOB עם כסף אמיתי)</span>}
-          </div>
-          <Button
-            size="sm"
-            variant={config?.dry_run ? "destructive" : "outline"}
-            onClick={async () => {
-              const goingLive = !!config?.dry_run;
-              const msg = goingLive
-                ? "⚠️ לעבור למצב LIVE? יישלחו הזמנות אמיתיות לפולימרקט עם כסף אמיתי."
-                : "לחזור למצב DRY RUN (סימולציה ללא הזמנות אמיתיות)?";
-              if (!confirm(msg)) return;
-              const { data: j, error } = await supabase.functions.invoke("real-set-mode", {
-                body: { dry_run: !goingLive },
-              });
-              if (error || !j?.ok) toast.error(error?.message || j?.error || "failed");
-              else { toast.success(goingLive ? "🔴 LIVE mode" : "🟡 DRY RUN"); await load(); }
-            }}
-          >
-            {config?.dry_run ? "עבור ל-LIVE" : "חזור ל-DRY RUN"}
-          </Button>
-        </div>
+        {(() => {
+          const mode = config?.execution_mode ?? "paper";
+          const isLiveMode = mode === "live_compliant_only";
+          const workerSeenAt = config?.worker_last_seen_at ? new Date(config.worker_last_seen_at).getTime() : 0;
+          const workerAgeSec = workerSeenAt ? Math.round((Date.now() - workerSeenAt) / 1000) : null;
+          const workerOnline = workerAgeSec != null && workerAgeSec < 120;
+          const geoBlocked = !!config?.last_geo_blocked;
+          const country = config?.last_geo_country ?? "?";
+          let label = "🟡 PAPER MODE";
+          let cls = "border-yellow-500/50 bg-yellow-500/10";
+          let iconCls = "text-yellow-500";
+          if (isLiveMode && geoBlocked) { label = `🔴 GEO BLOCKED (${country})`; cls = "border-red-500/60 bg-red-500/15"; iconCls = "text-red-500"; }
+          else if (isLiveMode && !workerOnline) { label = `⚫ WORKER OFFLINE${workerAgeSec != null ? ` (${workerAgeSec}s ago)` : ""}`; cls = "border-zinc-500/60 bg-zinc-500/15"; iconCls = "text-zinc-400"; }
+          else if (isLiveMode && workerOnline) { label = `🟢 LIVE COMPLIANT — worker ${workerAgeSec}s ago · ${country}`; cls = "border-green-500/60 bg-green-500/15"; iconCls = "text-green-500"; }
+          return (
+            <div className={`rounded-lg border-2 p-3 flex items-center gap-2 flex-wrap ${cls}`}>
+              <AlertTriangle className={`h-5 w-5 ${iconCls}`} />
+              <div className="text-sm flex-1">
+                <b>💵 {label}</b>
+                <span className="text-muted-foreground">
+                  {isLiveMode
+                    ? " (Supabase שולח intents · ה-worker שלך בבית מבצע ב-CLOB אחרי geoblock check)"
+                    : " (סימולציה בלבד — לא נשלחות הזמנות לפולימרקט)"}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant={isLiveMode ? "outline" : "destructive"}
+                onClick={async () => {
+                  const next = isLiveMode ? "paper" : "live_compliant_only";
+                  const msg = next === "live_compliant_only"
+                    ? "⚠️ לעבור ל-LIVE COMPLIANT? Supabase יתחיל לשלוח intents ל-worker המקומי שלך. הוודא שה-worker רץ במחשב!"
+                    : "לחזור ל-PAPER MODE? לא יישלחו עוד intents חדשים.";
+                  if (!confirm(msg)) return;
+                  const { data: j, error } = await supabase.functions.invoke("real-set-execution-mode", {
+                    body: { execution_mode: next },
+                  });
+                  if (error || !j?.ok) toast.error(error?.message || j?.error || "failed");
+                  else { toast.success(next === "live_compliant_only" ? "🟢 LIVE COMPLIANT" : "🟡 PAPER"); await load(); }
+                }}
+              >
+                {isLiveMode ? "חזור ל-PAPER" : "עבור ל-LIVE COMPLIANT"}
+              </Button>
+            </div>
+          );
+        })()}
 
         {isHalted && (
           <div className="rounded-lg border-2 border-red-500/60 bg-red-500/15 p-3 text-sm">

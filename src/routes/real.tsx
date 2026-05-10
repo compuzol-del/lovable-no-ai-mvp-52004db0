@@ -199,6 +199,42 @@ function RealPage() {
     }
   }
 
+  async function toggleBot(action: "start" | "stop", clearHalt = false) {
+    setToggling(true);
+    try {
+      const res = await fetch("/api/public/hooks/real-toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, clear_halt: clearHalt }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) {
+        const failed = (j.checks || []).filter((c: any) => !c.ok);
+        if (failed.length > 0) {
+          const msg = failed.map((c: any) => `❌ ${c.name}: ${c.detail}`).join("\n");
+          toast.error(msg, { duration: 8000 });
+          // If halt is the only blocker, offer override
+          const onlyHalt = failed.length === 1 && failed[0].name === "daily_halt";
+          if (onlyHalt && action === "start" && !clearHalt) {
+            if (confirm("הבוט מושהה ע״י ה-kill switch היומי. לאפס את ההשהיה ולהפעיל בכל זאת?")) {
+              await toggleBot("start", true);
+              return;
+            }
+          }
+        } else {
+          toast.error(j.error || "failed");
+        }
+        return;
+      }
+      toast.success(action === "start" ? "✅ הבוט הופעל — כל הבדיקות עברו" : "🛑 הבוט נעצר");
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setToggling(false);
+    }
+  }
+
   const totalOpenValue = open.reduce((s, p) => s + (p.current_price ?? p.entry_price) * Number(p.shares), 0);
   const totalOpenCost = open.reduce((s, p) => s + Number(p.size_usd), 0);
   const openPnl = totalOpenValue - totalOpenCost;

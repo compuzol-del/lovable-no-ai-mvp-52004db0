@@ -189,17 +189,19 @@ function RealPage() {
     .reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
 
   async function load() {
-    const [{ data: o }, { data: c }, { data: cfg }, { data: lastPos }] = await Promise.all([
+    const [{ data: o }, { data: c }, { data: cfg }, { data: lastPos }, { data: ints }] = await Promise.all([
       supabase.from("real_positions").select("*").eq("status", "OPEN").order("opened_at", { ascending: false }),
       supabase.from("real_positions").select("*").eq("status", "CLOSED").order("closed_at", { ascending: false }).limit(500),
       supabase.from("real_bot_config").select("*").eq("id", 1).single(),
       supabase.from("real_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
+      supabase.from("execution_intents").select("*").order("created_at", { ascending: false }).limit(30),
     ]);
     const openWithMarkets = await attachMarketData((o as Position[]) || []);
     const closedFiltered = ((c as Position[]) || []).filter((p) => Number(p.pnl_usd ?? 0) !== 0);
     const closedWithMarkets = await attachMarketData(closedFiltered);
     setOpen(openWithMarkets);
     setClosed(closedWithMarkets);
+    setIntents((ints as Intent[]) || []);
     const realCfg = cfg as Config | null;
     setConfig(realCfg);
     const lp = (lastPos as any[])?.[0];

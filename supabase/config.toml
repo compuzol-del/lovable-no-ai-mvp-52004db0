@@ -1,1 +1,7 @@
 project_id = "wkkjekrswyibxqebfgpe"
+
+[functions.worker-claim]
+verify_jwt = false
+
+[functions.worker-report]
+verify_jwt = false

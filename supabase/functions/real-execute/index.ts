@@ -197,8 +197,11 @@ Deno.serve(async (req) => {
 
       let currentOpen = openCount ?? 0;
       const attemptedInRun = new Set<string>();
+      const testMaxNew = (cfg as any).__test_max_new as number | undefined;
+      let testNewCount = 0;
       for (const s of signals || []) {
         if (currentOpen >= Number(cfg.max_open_total)) break;
+        if (testMaxNew != null && testNewCount >= testMaxNew) break;
         const signalKey = `${s.condition_id}:${s.outcome ?? ""}`;
         if (attemptedInRun.has(signalKey)) {
           skipped.push({ condition_id: s.condition_id, why: "duplicate signal in run" }); continue;

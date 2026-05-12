@@ -381,6 +381,15 @@ function RealPage() {
               ריצה ידנית
             </Button>
             <Button
+              onClick={runTestLive}
+              disabled={running || config?.execution_mode !== "live_compliant_only"}
+              size="sm"
+              className="bg-amber-500 text-black hover:bg-amber-400"
+              title="הרצת בדיקה חיה אחת: 1 פוזיציה, $1, Loss limit $5"
+            >
+              🧪 Run 1 Small Live Test ($1)
+            </Button>
+            <Button
               size="sm"
               variant="outline"
               onClick={async () => {

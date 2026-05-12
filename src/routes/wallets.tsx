@@ -109,6 +109,35 @@ function WalletsPage() {
     }
   }
 
+  function downloadExcel() {
+    const data = rows.map((w) => ({
+      Tier: w.quality_tier,
+      Score: Number(w.quality_score),
+      Active: w.is_active ? "YES" : "NO",
+      Label: w.label || "",
+      Address: w.address,
+      "Polymarket URL": `https://polymarket.com/profile/${w.address}`,
+      "Closed Positions": w.perf?.closed_positions ?? "",
+      "Win Rate %": w.perf?.win_rate != null ? Number(w.perf.win_rate) * 100 : "",
+      "Avg ROI %": w.perf?.avg_roi_pct ?? "",
+      "Total PnL USD": w.perf?.total_pnl_usd ?? "",
+      "Unique Markets": w.perf?.unique_markets ?? "",
+      "Last 30d Trades": w.perf?.last_30d_trades ?? "",
+      "Auto Disabled Reason": w.auto_disabled_reason || "",
+      Status: passing.includes(w) ? "PASSING" : w.quality_tier === "EXCLUDED" ? "EXCLUDED" : "OTHER",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws["!cols"] = [
+      { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 24 }, { wch: 44 }, { wch: 60 },
+      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 10 },
+      { wch: 30 }, { wch: 12 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Whales");
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `whales-${stamp}.xlsx`);
+  }
+
   const tierCounts = rows.reduce<Record<string, number>>((acc, r) => {
     acc[r.quality_tier] = (acc[r.quality_tier] || 0) + 1;
     return acc;

@@ -26,9 +26,20 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ ok: false, error: "POST only" }, 405);
 
-  const expectedSecret = Deno.env.get("WORKER_SHARED_SECRET");
-  if (!expectedSecret || req.headers.get("x-worker-secret") !== expectedSecret) {
-    return json({ ok: false, error: "unauthorized" }, 401);
+  const envSecret = Deno.env.get("WORKER_SHARED_SECRET");
+  const headerSecret = req.headers.get("x-worker-secret");
+  const expected = envSecret?.trim();
+  const received = headerSecret?.trim();
+  const debug = {
+    hasEnvSecret: !!expected,
+    hasHeaderSecret: !!received,
+    envSecretLength: expected?.length ?? 0,
+    headerSecretLength: received?.length ?? 0,
+    secretsMatch: !!expected && received === expected,
+  };
+  console.log("worker-report auth debug:", debug);
+  if (!expected || !received || received !== expected) {
+    return json({ ok: false, error: "unauthorized", debug }, 401);
   }
 
   let body: ReportBody = {};

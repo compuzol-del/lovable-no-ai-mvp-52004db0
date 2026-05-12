@@ -244,7 +244,8 @@ Deno.serve(async (req) => {
           }
         }
 
-        const sizeUsd = sizeForScore(Number(s.score));
+        const testSizeUsd = (cfg as any).__test_size_usd as number | undefined;
+        const sizeUsd = testSizeUsd != null ? testSizeUsd : sizeForScore(Number(s.score));
         const shares = sizeUsd / entry;
         const tpPrice = Math.min(0.99, entry * (1 + Number(cfg.tp_pct) / 100));
         const slPrice = Math.max(0.01, entry * (1 + Number(cfg.sl_pct) / 100));

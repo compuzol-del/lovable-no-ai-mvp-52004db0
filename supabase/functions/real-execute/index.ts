@@ -71,13 +71,34 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // Optional body: { test_live: true } enables SAFE LIVE TEST mode (1 order, $1 size, $5 loss limit)
+  let body: any = {};
+  if (req.method === "POST") { try { body = await req.json(); } catch {} }
+  const testLive = body?.test_live === true;
+
   const opened: any[] = [];
   const closed: any[] = [];
   const skipped: any[] = [];
 
   try {
-  const { data: cfg } = await supabaseAdmin.from("real_bot_config").select("*").eq("id", 1).single();
-  if (!cfg) return new Response(JSON.stringify({ error: "no config" }), { status: 500, headers: corsHeaders });
+  const { data: cfgRow } = await supabaseAdmin.from("real_bot_config").select("*").eq("id", 1).single();
+  if (!cfgRow) return new Response(JSON.stringify({ error: "no config" }), { status: 500, headers: corsHeaders });
+
+  // SAFE LIVE TEST overrides — apply only for this run, do NOT persist to DB
+  const cfg: any = { ...cfgRow };
+  if (testLive) {
+    if (cfg.execution_mode !== "live_compliant_only") {
+      return new Response(JSON.stringify({ ok: false, error: "test_live requires execution_mode=live_compliant_only" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    cfg.enabled = true;            // bypass enabled flag for the manual test
+    cfg.dry_run = false;           // force live (intent will be enqueued)
+    cfg.max_open_total = 9999;     // cap is enforced by __test_max_new below
+    cfg.daily_loss_limit_usd = Math.min(Number(cfg.daily_loss_limit_usd ?? 50), 5);
+    (cfg as any).__test_max_new = 1;
+    (cfg as any).__test_size_usd = 1;
+  }
 
   // 1. Refresh open positions
   const { data: openPos } = await supabaseAdmin.from("real_positions").select("*").eq("status", "OPEN");

@@ -231,6 +231,28 @@ function RealPage() {
     }
   }
 
+  async function runTestLive() {
+    if (config?.execution_mode !== "live_compliant_only") {
+      toast.error("עבור קודם ל-LIVE COMPLIANT MODE");
+      return;
+    }
+    if (!confirm("הרצת בדיקה חיה אחת:\n• לכל היותר 1 פוזיציה חדשה\n• גודל: $1\n• Loss limit: $5\n\nלהמשיך?")) return;
+    setRunning(true);
+    try {
+      const { data: j, error } = await supabase.functions.invoke("real-execute", { body: { test_live: true } });
+      if (error) throw new Error(error.message || "failed");
+      if (!j?.ok) throw new Error(j?.error || "failed");
+      const firstSkip = j?.details?.skipped?.[0]?.why;
+      if (j.opened > 0) toast.success(`✅ נשלח 1 intent חי ($1) ל-worker — בדוק את Execution Queue`, { duration: 10000 });
+      else toast.message(`לא נמצא מועמד מתאים${firstSkip ? ` — ${firstSkip}` : ""}`, { duration: 8000 });
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setRunning(false);
+    }
+  }
+
   async function toggleBot(action: "start" | "stop", clearHalt = false) {
     setToggling(true);
     try {

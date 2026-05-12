@@ -171,6 +171,10 @@ function WalletsPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={downloadExcel} disabled={loading || rows.length === 0} size="sm" variant="outline">
+              <Download className="h-4 w-4 mr-1" />
+              הורד אקסל ({rows.length})
+            </Button>
             <Button onClick={scanNew} disabled={scanning || refreshing} size="sm" variant="outline">
               <RefreshCw className={`h-4 w-4 mr-1 ${scanning ? "animate-spin" : ""}`} />
               סרוק 20 חדשים

@@ -281,8 +281,9 @@ Deno.serve(async (req) => {
           }
         }
 
-        opened.push({ id: ins?.id, score: s.score, sizeUsd, entry, live: isLive });
+        opened.push({ id: ins?.id, score: s.score, sizeUsd, entry, live: isLive, test_live: !!testLive });
         currentOpen += 1;
+        testNewCount += 1;
       }
     }
   }

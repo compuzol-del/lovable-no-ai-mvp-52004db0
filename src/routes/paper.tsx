@@ -55,7 +55,6 @@ type Config = {
 };
 
 export const Route = createFileRoute("/paper")({
-  ssr: false,
   head: () => ({
     meta: [
       { title: "Paper Bot — Whale Auto-Trader" },

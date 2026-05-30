@@ -95,7 +95,6 @@ type Intent = {
 };
 
 export const Route = createFileRoute("/real")({
-  ssr: false,
   head: () => ({
     meta: [
       { title: "Real Bot — Whale Auto-Trader (Live)" },

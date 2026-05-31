@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "../../../../integrations/supabase/client.server";
-import { placeBuyOrder } from "../../../../integrations/polymarket/client.server";
 
 const POLYMARKET_CLOB = "https://clob.polymarket.com";
 
@@ -281,6 +280,7 @@ export const Route = createFileRoute("/api/public/hooks/real-execute")({
                   skipped.push({ condition_id: s.condition_id, why: "no asset/token id" });
                   continue;
                 }
+                const { placeBuyOrder } = await import("../../../../integrations/polymarket/client.server");
                 const res = await placeBuyOrder(s.asset, entry, shares);
                 if (!res.success) {
                   skipped.push({ condition_id: s.condition_id, why: `order failed: ${res.error}` });

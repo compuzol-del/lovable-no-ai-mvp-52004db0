@@ -95,12 +95,23 @@ async function attachMarketData(positions: Position[]) {
   const conditionIds = Array.from(new Set(positions.map((p) => p.condition_id).filter(Boolean)));
   if (conditionIds.length === 0) return positions;
 
-  const { data: markets } = await supabase
-    .from("markets")
-    .select("condition_id,slug,event_slug,resolved_outcome")
-    .in("condition_id", conditionIds);
+  const marketRows: Array<{
+    condition_id: string;
+    slug: string | null;
+    event_slug: string | null;
+    resolved_outcome: string | null;
+  }> = [];
 
-  const byConditionId = new Map((markets || []).map((m) => [m.condition_id, m]));
+  for (let i = 0; i < conditionIds.length; i += 50) {
+    const chunk = conditionIds.slice(i, i + 50);
+    const { data } = await supabase
+      .from("markets")
+      .select("condition_id,slug,event_slug,resolved_outcome")
+      .in("condition_id", chunk);
+    if (data) marketRows.push(...data);
+  }
+
+  const byConditionId = new Map(marketRows.map((m) => [m.condition_id, m]));
   return positions.map((p) => {
     const market = byConditionId.get(p.condition_id);
     return {

@@ -220,7 +220,13 @@ function PaperPage() {
   const openPnl = totalOpenValue - totalOpenCost;
   const closedPnl = closed.reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
   const wins = closed.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
-  const winRate = closed.length ? (wins / closed.length) * 100 : 0;
+  const losses = closed.filter((p) => Number(p.pnl_usd ?? 0) < 0).length;
+  const winRate = wins + losses ? (wins / (wins + losses)) * 100 : 0;
+  const last24h = closed.filter((p) => p.closed_at && Date.now() - new Date(p.closed_at).getTime() <= 24 * 3600000);
+  const pnl24h = last24h.reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
+  const wins24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
+  const losses24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) < 0).length;
+  const winRate24h = wins24h + losses24h ? (wins24h / (wins24h + losses24h)) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -275,6 +281,13 @@ function PaperPage() {
               </>
             );
           })()}
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="כל הזמנים · עסקאות" value={`${closed.length} סגורות · ${open.length} פתוחות`} />
+          <StatCard label="כל הזמנים · Win" value={`${winRate.toFixed(1)}% (${wins}/${wins + losses})`} color={pnlColor(closedPnl)} />
+          <StatCard label="24 שעות · עסקאות" value={`${last24h.length} סגורות`} />
+          <StatCard label={`24 שעות · Win ${winRate24h.toFixed(1)}%`} value={`${pnl24h >= 0 ? "+" : ""}$${pnl24h.toFixed(2)}`} color={pnlColor(pnl24h)} />
         </div>
 
         <Tabs defaultValue="pnl">

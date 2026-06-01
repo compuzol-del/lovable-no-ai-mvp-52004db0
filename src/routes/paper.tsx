@@ -123,6 +123,29 @@ async function attachMarketData(positions: Position[]) {
   });
 }
 
+async function fetchPositionsByStatus(status: "OPEN" | "CLOSED") {
+  const pageSize = 1000;
+  const rows: Position[] = [];
+  const orderColumn = status === "OPEN" ? "opened_at" : "closed_at";
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("paper_positions")
+      .select("*")
+      .eq("status", status)
+      .order(orderColumn, { ascending: false, nullsFirst: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+
+    const batch = (data as Position[]) || [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+
+  return rows;
+}
+
 function PaperPage() {
   const [open, setOpen] = useState<Position[]>([]);
   const [closed, setClosed] = useState<Position[]>([]);
@@ -153,16 +176,15 @@ function PaperPage() {
   const filteredWinRate = closedFiltered.length ? (filteredWins / closedFiltered.length) * 100 : 0;
 
   async function load() {
-    const [{ data: o }, { data: c }, { data: cfg }, { data: lastPos }, { data: lastScan }] = await Promise.all([
-      supabase.from("paper_positions").select("*").eq("status", "OPEN").order("opened_at", { ascending: false }),
-      supabase.from("paper_positions").select("*").eq("status", "CLOSED").order("closed_at", { ascending: false }).limit(500),
+    const [o, c, { data: cfg }, { data: lastPos }, { data: lastScan }] = await Promise.all([
+      fetchPositionsByStatus("OPEN"),
+      fetchPositionsByStatus("CLOSED"),
       supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
       supabase.from("paper_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
       supabase.from("tracked_wallets").select("last_scanned_at").order("last_scanned_at", { ascending: false, nullsFirst: false }).limit(1),
     ]);
-    const openWithMarkets = await attachMarketData((o as Position[]) || []);
-    const closedFiltered = ((c as Position[]) || []).filter((p) => Number(p.pnl_usd ?? 0) !== 0);
-    const closedWithMarkets = await attachMarketData(closedFiltered);
+    const openWithMarkets = await attachMarketData(o);
+    const closedWithMarkets = await attachMarketData(c);
     setOpen(openWithMarkets);
     setClosed(closedWithMarkets);
     setConfig(cfg as Config | null);
@@ -198,7 +220,13 @@ function PaperPage() {
   const openPnl = totalOpenValue - totalOpenCost;
   const closedPnl = closed.reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
   const wins = closed.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
-  const winRate = closed.length ? (wins / closed.length) * 100 : 0;
+  const losses = closed.filter((p) => Number(p.pnl_usd ?? 0) < 0).length;
+  const winRate = wins + losses ? (wins / (wins + losses)) * 100 : 0;
+  const last24h = closed.filter((p) => p.closed_at && Date.now() - new Date(p.closed_at).getTime() <= 24 * 3600000);
+  const pnl24h = last24h.reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
+  const wins24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
+  const losses24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) < 0).length;
+  const winRate24h = wins24h + losses24h ? (wins24h / (wins24h + losses24h)) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -253,6 +281,13 @@ function PaperPage() {
               </>
             );
           })()}
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="כל הזמנים · עסקאות" value={`${closed.length} סגורות · ${open.length} פתוחות`} />
+          <StatCard label="כל הזמנים · Win" value={`${winRate.toFixed(1)}% (${wins}/${wins + losses})`} color={pnlColor(closedPnl)} />
+          <StatCard label="24 שעות · עסקאות" value={`${last24h.length} סגורות`} />
+          <StatCard label={`24 שעות · Win ${winRate24h.toFixed(1)}%`} value={`${pnl24h >= 0 ? "+" : ""}$${pnl24h.toFixed(2)}`} color={pnlColor(pnl24h)} />
         </div>
 
         <Tabs defaultValue="pnl">

@@ -123,6 +123,29 @@ async function attachMarketData(positions: Position[]) {
   });
 }
 
+async function fetchPositionsByStatus(status: "OPEN" | "CLOSED") {
+  const pageSize = 1000;
+  const rows: Position[] = [];
+  const orderColumn = status === "OPEN" ? "opened_at" : "closed_at";
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("paper_positions")
+      .select("*")
+      .eq("status", status)
+      .order(orderColumn, { ascending: false, nullsFirst: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+
+    const batch = (data as Position[]) || [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+
+  return rows;
+}
+
 function PaperPage() {
   const [open, setOpen] = useState<Position[]>([]);
   const [closed, setClosed] = useState<Position[]>([]);
@@ -153,16 +176,15 @@ function PaperPage() {
   const filteredWinRate = closedFiltered.length ? (filteredWins / closedFiltered.length) * 100 : 0;
 
   async function load() {
-    const [{ data: o }, { data: c }, { data: cfg }, { data: lastPos }, { data: lastScan }] = await Promise.all([
-      supabase.from("paper_positions").select("*").eq("status", "OPEN").order("opened_at", { ascending: false }),
-      supabase.from("paper_positions").select("*").eq("status", "CLOSED").order("closed_at", { ascending: false }).limit(500),
+    const [o, c, { data: cfg }, { data: lastPos }, { data: lastScan }] = await Promise.all([
+      fetchPositionsByStatus("OPEN"),
+      fetchPositionsByStatus("CLOSED"),
       supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
       supabase.from("paper_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
       supabase.from("tracked_wallets").select("last_scanned_at").order("last_scanned_at", { ascending: false, nullsFirst: false }).limit(1),
     ]);
-    const openWithMarkets = await attachMarketData((o as Position[]) || []);
-    const closedFiltered = ((c as Position[]) || []).filter((p) => Number(p.pnl_usd ?? 0) !== 0);
-    const closedWithMarkets = await attachMarketData(closedFiltered);
+    const openWithMarkets = await attachMarketData(o);
+    const closedWithMarkets = await attachMarketData(c);
     setOpen(openWithMarkets);
     setClosed(closedWithMarkets);
     setConfig(cfg as Config | null);

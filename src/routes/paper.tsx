@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -151,6 +151,7 @@ function PaperPage() {
   const [closed, setClosed] = useState<Position[]>([]);
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [filterFrom, setFilterFrom] = useState<string>("");
   const [filterTo, setFilterTo] = useState<string>("");
@@ -159,6 +160,8 @@ function PaperPage() {
   const PNL_PAGE_SIZE = 20;
   const [lastBotRun, setLastBotRun] = useState<string | null>(null);
   const [lastScanRun, setLastScanRun] = useState<string | null>(null);
+  const loadSeq = useRef(0);
+  const hasLoaded = useRef(false);
 
   const closedFiltered = closed.filter((p) => {
     const pnl = Number(p.pnl_usd ?? 0);
@@ -176,22 +179,43 @@ function PaperPage() {
   const filteredWinRate = closedFiltered.length ? (filteredWins / closedFiltered.length) * 100 : 0;
 
   async function load() {
-    const [o, c, { data: cfg }, { data: lastPos }, { data: lastScan }] = await Promise.all([
-      fetchPositionsByStatus("OPEN"),
-      fetchPositionsByStatus("CLOSED"),
-      supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
-      supabase.from("paper_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
-      supabase.from("tracked_wallets").select("last_scanned_at").order("last_scanned_at", { ascending: false, nullsFirst: false }).limit(1),
-    ]);
-    const openWithMarkets = await attachMarketData(o);
-    const closedWithMarkets = await attachMarketData(c);
-    setOpen(openWithMarkets);
-    setClosed(closedWithMarkets);
-    setConfig(cfg as Config | null);
-    const lp = (lastPos as any[])?.[0];
-    setLastBotRun(lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at) ? lp.closed_at : lp?.opened_at ?? null);
-    setLastScanRun((lastScan as any[])?.[0]?.last_scanned_at ?? null);
-    setLoading(false);
+    const seq = ++loadSeq.current;
+    if (!hasLoaded.current) setLoading(true);
+    setLoadError(null);
+
+    try {
+      const [o, c, { data: cfg }, { data: lastPos }, { data: lastScan }] = await Promise.all([
+        fetchPositionsByStatus("OPEN"),
+        fetchPositionsByStatus("CLOSED"),
+        supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
+        supabase.from("paper_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
+        supabase.from("tracked_wallets").select("last_scanned_at").order("last_scanned_at", { ascending: false, nullsFirst: false }).limit(1),
+      ]);
+
+      if (seq !== loadSeq.current) return;
+      setOpen(o);
+      setClosed(c);
+      setConfig(cfg as Config | null);
+      const lp = (lastPos as any[])?.[0];
+      setLastBotRun(lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at) ? lp.closed_at : lp?.opened_at ?? null);
+      setLastScanRun((lastScan as any[])?.[0]?.last_scanned_at ?? null);
+      hasLoaded.current = true;
+      setLoading(false);
+
+      Promise.all([attachMarketData(o), attachMarketData(c.slice(0, 120))])
+        .then(([openWithMarkets, recentClosedWithMarkets]) => {
+          if (seq !== loadSeq.current) return;
+          setOpen(openWithMarkets);
+          const enrichedById = new Map(recentClosedWithMarkets.map((p) => [p.id, p]));
+          setClosed((prev) => prev.map((p) => enrichedById.get(p.id) ?? p));
+        })
+        .catch(() => undefined);
+    } catch (e: any) {
+      if (seq !== loadSeq.current) return;
+      hasLoaded.current = true;
+      setLoadError(e?.message ?? "טעינת הדשבורד נכשלה");
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -245,6 +269,15 @@ function PaperPage() {
             הפעל עכשיו
           </Button>
         </div>
+
+        {/* Status banner */}
+        {loadError && (
+          <Card>
+            <CardContent className="p-4 text-sm text-destructive">
+              שגיאה בטעינת הדשבורד: {loadError}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Status banner */}
         {config && (

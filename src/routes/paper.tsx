@@ -58,7 +58,10 @@ export const Route = createFileRoute("/paper")({
   head: () => ({
     meta: [
       { title: "Paper Bot — Whale Auto-Trader" },
-      { name: "description", content: "Automated paper-money bot trading whale signals on Polymarket." },
+      {
+        name: "description",
+        content: "Automated paper-money bot trading whale signals on Polymarket.",
+      },
     ],
   }),
   component: PaperPage,
@@ -74,7 +77,12 @@ function pnlColor(pct: number | null) {
 function fmtTime(iso: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleString("he-IL", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
+  return d.toLocaleString("he-IL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
 }
 
 function fmtDateTime(iso: string | null) {
@@ -202,8 +210,16 @@ function PaperPage() {
         fetchPositionsByStatus("OPEN"),
         fetchPositionsByStatus("CLOSED"),
         supabase.from("paper_bot_config").select("*").eq("id", 1).single(),
-        supabase.from("paper_positions").select("opened_at,closed_at").order("opened_at", { ascending: false }).limit(1),
-        supabase.from("tracked_wallets").select("last_scanned_at").order("last_scanned_at", { ascending: false, nullsFirst: false }).limit(1),
+        supabase
+          .from("paper_positions")
+          .select("opened_at,closed_at")
+          .order("opened_at", { ascending: false })
+          .limit(1),
+        supabase
+          .from("tracked_wallets")
+          .select("last_scanned_at")
+          .order("last_scanned_at", { ascending: false, nullsFirst: false })
+          .limit(1),
       ]);
 
       if (seq !== loadSeq.current) return;
@@ -211,7 +227,11 @@ function PaperPage() {
       setClosed(c);
       setConfig(cfg as Config | null);
       const lp = (lastPos as any[])?.[0];
-      setLastBotRun(lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at) ? lp.closed_at : lp?.opened_at ?? null);
+      setLastBotRun(
+        lp?.closed_at && new Date(lp.closed_at) > new Date(lp.opened_at)
+          ? lp.closed_at
+          : (lp?.opened_at ?? null),
+      );
       setLastScanRun((lastScan as any[])?.[0]?.last_scanned_at ?? null);
       hasLoaded.current = true;
       setLoading(false);
@@ -263,14 +283,19 @@ function PaperPage() {
   }
 
   // Stats
-  const totalOpenValue = open.reduce((s, p) => s + (p.current_price ?? p.entry_price) * Number(p.shares), 0);
+  const totalOpenValue = open.reduce(
+    (s, p) => s + (p.current_price ?? p.entry_price) * Number(p.shares),
+    0,
+  );
   const totalOpenCost = open.reduce((s, p) => s + Number(p.size_usd), 0);
   const openPnl = totalOpenValue - totalOpenCost;
   const closedPnl = closed.reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
   const wins = closed.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
   const losses = closed.filter((p) => Number(p.pnl_usd ?? 0) < 0).length;
   const winRate = wins + losses ? (wins / (wins + losses)) * 100 : 0;
-  const last24h = closed.filter((p) => p.closed_at && Date.now() - new Date(p.closed_at).getTime() <= 24 * 3600000);
+  const last24h = closed.filter(
+    (p) => p.closed_at && Date.now() - new Date(p.closed_at).getTime() <= 24 * 3600000,
+  );
   const pnl24h = last24h.reduce((s, p) => s + Number(p.pnl_usd ?? 0), 0);
   const wins24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
   const losses24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) < 0).length;
@@ -288,9 +313,12 @@ function PaperPage() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold">🤖 Paper Bot</h1>
-            <p className="text-sm text-muted-foreground">קונה ומוכר אוטומטית לפי סיגנלי לווייתנים</p>
+            <p className="text-sm text-muted-foreground">
+              קונה ומוכר אוטומטית לפי סיגנלי לווייתנים
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
-              🤖 ריצת בוט אחרונה: <b>{fmtTime(lastBotRun)}</b> · 🐋 סריקת ארנקים אחרונה: <b>{fmtTime(lastScanRun)}</b>
+              🤖 ריצת בוט אחרונה: <b>{fmtTime(lastBotRun)}</b> · 🐋 סריקת ארנקים אחרונה:{" "}
+              <b>{fmtTime(lastScanRun)}</b>
             </p>
           </div>
           <Button onClick={runNow} disabled={running} size="sm">
@@ -315,12 +343,34 @@ function PaperPage() {
               <Badge variant={config.enabled ? "default" : "destructive"}>
                 <Power className="h-3 w-3 mr-1" /> {config.enabled ? "פעיל" : "כבוי"}
               </Badge>
-              <span>💰 תקציב התחלתי: <b className="text-primary">${Number(config.starting_budget_usd ?? 1000).toFixed(0)}</b></span>
-              <span>Min score: <b>{config.min_score}</b></span>
-              <span className="text-muted-foreground">TP/SL דינמי: low +40/-20 · mid +20/-12 · high +12/-8</span>
-              <span>Time-stop: <b>24h/12h/6h</b></span>
-              <span>Trailing→BE: <b className="text-blue-500">+{config.breakeven_trigger_pct}%</b></span>
-              <span>Whale-reversal: <b className={config.whale_reversal_exit ? "text-green-500" : "text-muted-foreground"}>{config.whale_reversal_exit ? "ON" : "OFF"}</b></span>
+              <span>
+                💰 תקציב התחלתי:{" "}
+                <b className="text-primary">
+                  ${Number(config.starting_budget_usd ?? 1000).toFixed(0)}
+                </b>
+              </span>
+              <span>
+                Min score: <b>{config.min_score}</b>
+              </span>
+              <span className="text-muted-foreground">
+                TP/SL דינמי: low +40/-20 · mid +20/-12 · high +12/-8
+              </span>
+              <span>
+                Time-stop: <b>24h/12h/6h</b>
+              </span>
+              <span>
+                Trailing→BE: <b className="text-blue-500">+{config.breakeven_trigger_pct}%</b>
+              </span>
+              <span>
+                Whale-reversal:{" "}
+                <b
+                  className={
+                    config.whale_reversal_exit ? "text-green-500" : "text-muted-foreground"
+                  }
+                >
+                  {config.whale_reversal_exit ? "ON" : "OFF"}
+                </b>
+              </span>
               <span className="text-muted-foreground">Sizing: 75-84→$30 · 85-94→$60 · 95+→$90</span>
             </CardContent>
           </Card>
@@ -336,20 +386,47 @@ function PaperPage() {
             const totalPct = (totalPnl / budget) * 100;
             return (
               <>
-                <StatCard label={`💵 זמין (מתוך $${budget.toFixed(0)})`} value={`$${available.toFixed(2)}`} color={available < budget ? "text-orange-500" : ""} />
-                <StatCard label={`🔒 נעול בפוזיציות (${open.length})`} value={`$${totalOpenCost.toFixed(2)}`} color="text-muted-foreground" />
-                <StatCard label="הון כולל (Equity)" value={`$${equity.toFixed(2)} (${totalPct >= 0 ? "+" : ""}${totalPct.toFixed(1)}%)`} color={pnlColor(totalPnl)} />
-                <StatCard label={`סגור: ${closed.length} · Win ${winRate.toFixed(0)}%`} value={`${closedPnl >= 0 ? "+" : ""}$${closedPnl.toFixed(2)}`} color={pnlColor(closedPnl)} />
+                <StatCard
+                  label={`💵 זמין (מתוך $${budget.toFixed(0)})`}
+                  value={`$${available.toFixed(2)}`}
+                  color={available < budget ? "text-orange-500" : ""}
+                />
+                <StatCard
+                  label={`🔒 נעול בפוזיציות (${open.length})`}
+                  value={`$${totalOpenCost.toFixed(2)}`}
+                  color="text-muted-foreground"
+                />
+                <StatCard
+                  label="הון כולל (Equity)"
+                  value={`$${equity.toFixed(2)} (${totalPct >= 0 ? "+" : ""}${totalPct.toFixed(1)}%)`}
+                  color={pnlColor(totalPnl)}
+                />
+                <StatCard
+                  label={`סגור: ${closed.length} · Win ${winRate.toFixed(0)}%`}
+                  value={`${closedPnl >= 0 ? "+" : ""}$${closedPnl.toFixed(2)}`}
+                  color={pnlColor(closedPnl)}
+                />
               </>
             );
           })()}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="כל הזמנים · עסקאות" value={`${closed.length} סגורות · ${open.length} פתוחות`} />
-          <StatCard label="כל הזמנים · Win" value={`${winRate.toFixed(1)}% (${wins}/${wins + losses})`} color={pnlColor(closedPnl)} />
+          <StatCard
+            label="כל הזמנים · עסקאות"
+            value={`${closed.length} סגורות · ${open.length} פתוחות`}
+          />
+          <StatCard
+            label="כל הזמנים · Win"
+            value={`${winRate.toFixed(1)}% (${wins}/${wins + losses})`}
+            color={pnlColor(closedPnl)}
+          />
           <StatCard label="24 שעות · עסקאות" value={`${last24h.length} סגורות`} />
-          <StatCard label={`24 שעות · Win ${winRate24h.toFixed(1)}%`} value={`${pnl24h >= 0 ? "+" : ""}$${pnl24h.toFixed(2)}`} color={pnlColor(pnl24h)} />
+          <StatCard
+            label={`24 שעות · Win ${winRate24h.toFixed(1)}%`}
+            value={`${pnl24h >= 0 ? "+" : ""}$${pnl24h.toFixed(2)}`}
+            color={pnlColor(pnl24h)}
+          />
         </div>
 
         <Tabs defaultValue="pnl">
@@ -362,13 +439,18 @@ function PaperPage() {
 
           <TabsContent value="pnl">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-base">טבלת רווח והפסד</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">טבלת רווח והפסד</CardTitle>
+              </CardHeader>
               <CardContent className="p-0">
                 {(() => {
                   const all = allTrades;
                   const totalPages = Math.max(1, Math.ceil(all.length / PNL_PAGE_SIZE));
                   const curPage = Math.min(pnlPage, totalPages);
-                  const pageItems = all.slice((curPage - 1) * PNL_PAGE_SIZE, curPage * PNL_PAGE_SIZE);
+                  const pageItems = all.slice(
+                    (curPage - 1) * PNL_PAGE_SIZE,
+                    curPage * PNL_PAGE_SIZE,
+                  );
                   return (
                     <>
                       {/* Desktop table */}
@@ -388,26 +470,53 @@ function PaperPage() {
                           </thead>
                           <tbody>
                             {all.length === 0 && (
-                              <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">אין נתונים עדיין</td></tr>
+                              <tr>
+                                <td colSpan={8} className="p-4 text-center text-muted-foreground">
+                                  אין נתונים עדיין
+                                </td>
+                              </tr>
                             )}
                             {pageItems.map((p) => {
                               const isOpen = p.status === "OPEN";
-                              const price = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
+                              const price = isOpen
+                                ? (p.current_price ?? p.entry_price)
+                                : (p.exit_price ?? p.entry_price);
                               const pnlUsd = isOpen
                                 ? (Number(price) - Number(p.entry_price)) * Number(p.shares)
                                 : Number(p.pnl_usd ?? 0);
                               const pnlPct = isOpen
-                                ? ((Number(price) - Number(p.entry_price)) / Number(p.entry_price)) * 100
+                                ? ((Number(price) - Number(p.entry_price)) /
+                                    Number(p.entry_price)) *
+                                  100
                                 : Number(p.pnl_pct ?? 0);
                               return (
                                 <tr key={p.id} className="border-t">
-                                  <td className="p-2 truncate text-right">{p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}</td>
-                                  <td className="p-2 text-center"><Badge variant={isOpen ? "default" : "outline"} className="text-xs">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge></td>
-                                  <td className="p-2 text-center">${Number(p.size_usd).toFixed(0)}</td>
-                                  <td className="p-2 text-center">{Number(p.entry_price).toFixed(3)}</td>
+                                  <td className="p-2 truncate text-right">
+                                    {p.title || p.condition_id.slice(0, 12)}
+                                    {p.outcome ? ` · ${p.outcome}` : ""}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    <Badge
+                                      variant={isOpen ? "default" : "outline"}
+                                      className="text-xs"
+                                    >
+                                      {isOpen ? "פתוח" : p.exit_reason || "סגור"}
+                                    </Badge>
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    ${Number(p.size_usd).toFixed(0)}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    {Number(p.entry_price).toFixed(3)}
+                                  </td>
                                   <td className="p-2 text-center">{Number(price).toFixed(3)}</td>
-                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
-                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</td>
+                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>
+                                    {pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}
+                                  </td>
+                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlPct)}`}>
+                                    {pnlPct >= 0 ? "+" : ""}
+                                    {pnlPct.toFixed(1)}%
+                                  </td>
                                   <td className="p-2 text-center">
                                     {p.condition_id && (
                                       <a
@@ -431,33 +540,62 @@ function PaperPage() {
                       {/* Mobile cards */}
                       <div className="md:hidden divide-y">
                         {all.length === 0 && (
-                          <div className="p-4 text-center text-muted-foreground text-sm">אין נתונים עדיין</div>
+                          <div className="p-4 text-center text-muted-foreground text-sm">
+                            אין נתונים עדיין
+                          </div>
                         )}
                         {pageItems.map((p) => {
                           const isOpen = p.status === "OPEN";
-                          const price = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
+                          const price = isOpen
+                            ? (p.current_price ?? p.entry_price)
+                            : (p.exit_price ?? p.entry_price);
                           const pnlUsd = isOpen
                             ? (Number(price) - Number(p.entry_price)) * Number(p.shares)
                             : Number(p.pnl_usd ?? 0);
                           const pnlPct = isOpen
-                            ? ((Number(price) - Number(p.entry_price)) / Number(p.entry_price)) * 100
+                            ? ((Number(price) - Number(p.entry_price)) / Number(p.entry_price)) *
+                              100
                             : Number(p.pnl_pct ?? 0);
                           return (
                             <div key={p.id} className="p-3 space-y-2">
                               <div className="flex justify-between items-start gap-2">
                                 <div className="text-sm font-medium flex-1 min-w-0 truncate text-right">
-                                  {p.title || p.condition_id.slice(0, 12)}{p.outcome ? ` · ${p.outcome}` : ""}
+                                  {p.title || p.condition_id.slice(0, 12)}
+                                  {p.outcome ? ` · ${p.outcome}` : ""}
                                 </div>
                                 <div className="text-right shrink-0">
-                                  <div className={`text-sm font-bold ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</div>
-                                  <div className={`text-xs ${pnlColor(pnlPct)}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</div>
+                                  <div className={`text-sm font-bold ${pnlColor(pnlUsd)}`}>
+                                    {pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}
+                                  </div>
+                                  <div className={`text-xs ${pnlColor(pnlPct)}`}>
+                                    {pnlPct >= 0 ? "+" : ""}
+                                    {pnlPct.toFixed(1)}%
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                <Badge variant={isOpen ? "default" : "outline"} className="text-[10px]">{isOpen ? "פתוח" : (p.exit_reason || "סגור")}</Badge>
-                                <span>Size: <b className="text-foreground">${Number(p.size_usd).toFixed(0)}</b></span>
-                                <span>כניסה: <b className="text-foreground">{Number(p.entry_price).toFixed(3)}</b></span>
-                                <span>{isOpen ? "נוכחי" : "יציאה"}: <b className="text-foreground">{Number(price).toFixed(3)}</b></span>
+                                <Badge
+                                  variant={isOpen ? "default" : "outline"}
+                                  className="text-[10px]"
+                                >
+                                  {isOpen ? "פתוח" : p.exit_reason || "סגור"}
+                                </Badge>
+                                <span>
+                                  Size:{" "}
+                                  <b className="text-foreground">
+                                    ${Number(p.size_usd).toFixed(0)}
+                                  </b>
+                                </span>
+                                <span>
+                                  כניסה:{" "}
+                                  <b className="text-foreground">
+                                    {Number(p.entry_price).toFixed(3)}
+                                  </b>
+                                </span>
+                                <span>
+                                  {isOpen ? "נוכחי" : "יציאה"}:{" "}
+                                  <b className="text-foreground">{Number(price).toFixed(3)}</b>
+                                </span>
                                 {p.condition_id && (
                                   <a
                                     href={marketUrl(p)}
@@ -469,7 +607,9 @@ function PaperPage() {
                                   </a>
                                 )}
                                 {!isOpen && p.resolved_outcome && (
-                                  <span>רשמי: <b className="text-foreground">{p.resolved_outcome}</b></span>
+                                  <span>
+                                    רשמי: <b className="text-foreground">{p.resolved_outcome}</b>
+                                  </span>
                                 )}
                               </div>
                             </div>
@@ -479,9 +619,25 @@ function PaperPage() {
 
                       {all.length > PNL_PAGE_SIZE && (
                         <div className="flex items-center justify-center gap-2 p-3 border-t">
-                          <Button size="sm" variant="outline" disabled={curPage <= 1} onClick={() => setPnlPage(curPage - 1)}>הקודם</Button>
-                          <span className="text-xs text-muted-foreground">עמוד {curPage} מתוך {totalPages}</span>
-                          <Button size="sm" variant="outline" disabled={curPage >= totalPages} onClick={() => setPnlPage(curPage + 1)}>הבא</Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={curPage <= 1}
+                            onClick={() => setPnlPage(curPage - 1)}
+                          >
+                            הקודם
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            עמוד {curPage} מתוך {totalPages}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={curPage >= totalPages}
+                            onClick={() => setPnlPage(curPage + 1)}
+                          >
+                            הבא
+                          </Button>
                         </div>
                       )}
                     </>
@@ -500,7 +656,10 @@ function PaperPage() {
                 {(() => {
                   const totalPages = Math.max(1, Math.ceil(allTrades.length / TRADES_PAGE_SIZE));
                   const curPage = Math.min(tradesPage, totalPages);
-                  const pageItems = allTrades.slice((curPage - 1) * TRADES_PAGE_SIZE, curPage * TRADES_PAGE_SIZE);
+                  const pageItems = allTrades.slice(
+                    (curPage - 1) * TRADES_PAGE_SIZE,
+                    curPage * TRADES_PAGE_SIZE,
+                  );
                   return (
                     <>
                       <div className="overflow-x-auto">
@@ -523,11 +682,17 @@ function PaperPage() {
                           </thead>
                           <tbody>
                             {allTrades.length === 0 && (
-                              <tr><td colSpan={12} className="p-4 text-center text-muted-foreground">אין עסקאות עדיין</td></tr>
+                              <tr>
+                                <td colSpan={12} className="p-4 text-center text-muted-foreground">
+                                  אין עסקאות עדיין
+                                </td>
+                              </tr>
                             )}
                             {pageItems.map((p) => {
                               const isOpen = p.status === "OPEN";
-                              const exitOrCurrent = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
+                              const exitOrCurrent = isOpen
+                                ? (p.current_price ?? p.entry_price)
+                                : (p.exit_price ?? p.entry_price);
                               const exitValue = Number(exitOrCurrent) * Number(p.shares);
                               const pnlUsd = isOpen
                                 ? (Number(exitOrCurrent) - Number(p.entry_price)) * Number(p.shares)
@@ -535,22 +700,52 @@ function PaperPage() {
                               return (
                                 <tr key={p.id} className="border-t">
                                   <td className="p-2 text-right max-w-[320px]">
-                                    <div className="truncate font-medium">{p.title || p.condition_id.slice(0, 12)}</div>
-                                    <div className="text-xs text-muted-foreground truncate">{p.outcome || "—"}</div>
+                                    <div className="truncate font-medium">
+                                      {p.title || p.condition_id.slice(0, 12)}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {p.outcome || "—"}
+                                    </div>
                                   </td>
-                                  <td className="p-2 text-center"><Badge variant={isOpen ? "default" : "outline"} className="text-xs">{isOpen ? "פתוחה" : "סגורה"}</Badge></td>
-                                  <td className="p-2 text-center whitespace-nowrap">{fmtDateTime(p.opened_at)}</td>
-                                  <td className="p-2 text-center">{Number(p.entry_price).toFixed(3)}</td>
-                                  <td className="p-2 text-center">${Number(p.size_usd).toFixed(2)}</td>
+                                  <td className="p-2 text-center">
+                                    <Badge
+                                      variant={isOpen ? "default" : "outline"}
+                                      className="text-xs"
+                                    >
+                                      {isOpen ? "פתוחה" : "סגורה"}
+                                    </Badge>
+                                  </td>
+                                  <td className="p-2 text-center whitespace-nowrap">
+                                    {fmtDateTime(p.opened_at)}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    {Number(p.entry_price).toFixed(3)}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    ${Number(p.size_usd).toFixed(2)}
+                                  </td>
                                   <td className="p-2 text-center">{Number(p.shares).toFixed(2)}</td>
-                                  <td className="p-2 text-center whitespace-nowrap">{fmtDateTime(p.closed_at)}</td>
-                                  <td className="p-2 text-center">{Number(exitOrCurrent).toFixed(3)}</td>
+                                  <td className="p-2 text-center whitespace-nowrap">
+                                    {fmtDateTime(p.closed_at)}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    {Number(exitOrCurrent).toFixed(3)}
+                                  </td>
                                   <td className="p-2 text-center">${exitValue.toFixed(2)}</td>
-                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
-                                  <td className="p-2 text-center text-xs text-muted-foreground">{isOpen ? "עדיין פתוחה" : (p.exit_reason || "—")}</td>
+                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>
+                                    {pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}
+                                  </td>
+                                  <td className="p-2 text-center text-xs text-muted-foreground">
+                                    {isOpen ? "עדיין פתוחה" : p.exit_reason || "—"}
+                                  </td>
                                   <td className="p-2 text-center">
                                     {p.condition_id && (
-                                      <a href={marketUrl(p)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center text-primary hover:underline">
+                                      <a
+                                        href={marketUrl(p)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center justify-center text-primary hover:underline"
+                                      >
                                         <ExternalLink className="h-3.5 w-3.5" />
                                       </a>
                                     )}
@@ -563,9 +758,25 @@ function PaperPage() {
                       </div>
                       {allTrades.length > TRADES_PAGE_SIZE && (
                         <div className="flex items-center justify-center gap-2 p-3 border-t">
-                          <Button size="sm" variant="outline" disabled={curPage <= 1} onClick={() => setTradesPage(curPage - 1)}>הקודם</Button>
-                          <span className="text-xs text-muted-foreground">עמוד {curPage} מתוך {totalPages}</span>
-                          <Button size="sm" variant="outline" disabled={curPage >= totalPages} onClick={() => setTradesPage(curPage + 1)}>הבא</Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={curPage <= 1}
+                            onClick={() => setTradesPage(curPage - 1)}
+                          >
+                            הקודם
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            עמוד {curPage} מתוך {totalPages}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={curPage >= totalPages}
+                            onClick={() => setTradesPage(curPage + 1)}
+                          >
+                            הבא
+                          </Button>
                         </div>
                       )}
                     </>
@@ -578,11 +789,15 @@ function PaperPage() {
           <TabsContent value="open" className="space-y-3">
             {loading && <p className="text-sm text-muted-foreground">טוען…</p>}
             {!loading && open.length === 0 && (
-              <Card><CardContent className="p-6 text-center text-muted-foreground">
-                אין פוזיציות פתוחות כרגע. הבוט מחכה לסיגנל STRONG_BUY הבא.
-              </CardContent></Card>
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  אין פוזיציות פתוחות כרגע. הבוט מחכה לסיגנל STRONG_BUY הבא.
+                </CardContent>
+              </Card>
             )}
-            {open.map((p) => <PositionCard key={p.id} p={p} isOpen />)}
+            {open.map((p) => (
+              <PositionCard key={p.id} p={p} isOpen />
+            ))}
           </TabsContent>
 
           <TabsContent value="closed" className="space-y-3">
@@ -609,27 +824,70 @@ function PaperPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">תוצאה</label>
                   <div className="flex gap-1">
-                    <Button size="sm" variant={filterResult === "all" ? "default" : "outline"} onClick={() => setFilterResult("all")}>הכל</Button>
-                    <Button size="sm" variant={filterResult === "win" ? "default" : "outline"} onClick={() => setFilterResult("win")} className={filterResult === "win" ? "" : "text-green-500"}>רווח</Button>
-                    <Button size="sm" variant={filterResult === "loss" ? "default" : "outline"} onClick={() => setFilterResult("loss")} className={filterResult === "loss" ? "" : "text-red-500"}>הפסד</Button>
+                    <Button
+                      size="sm"
+                      variant={filterResult === "all" ? "default" : "outline"}
+                      onClick={() => setFilterResult("all")}
+                    >
+                      הכל
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={filterResult === "win" ? "default" : "outline"}
+                      onClick={() => setFilterResult("win")}
+                      className={filterResult === "win" ? "" : "text-green-500"}
+                    >
+                      רווח
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={filterResult === "loss" ? "default" : "outline"}
+                      onClick={() => setFilterResult("loss")}
+                      className={filterResult === "loss" ? "" : "text-red-500"}
+                    >
+                      הפסד
+                    </Button>
                   </div>
                 </div>
                 {(filterFrom || filterTo || filterResult !== "all") && (
-                  <Button size="sm" variant="ghost" onClick={() => { setFilterFrom(""); setFilterTo(""); setFilterResult("all"); }}>נקה</Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setFilterFrom("");
+                      setFilterTo("");
+                      setFilterResult("all");
+                    }}
+                  >
+                    נקה
+                  </Button>
                 )}
                 <div className="ml-auto text-sm flex flex-wrap gap-3">
-                  <span>סה"כ: <b>{closedFiltered.length}</b></span>
-                  <span>Win: <b>{filteredWinRate.toFixed(0)}%</b></span>
-                  <span className={pnlColor(filteredPnl)}>P&L: <b>{filteredPnl >= 0 ? "+" : ""}${filteredPnl.toFixed(2)}</b></span>
+                  <span>
+                    סה"כ: <b>{closedFiltered.length}</b>
+                  </span>
+                  <span>
+                    Win: <b>{filteredWinRate.toFixed(0)}%</b>
+                  </span>
+                  <span className={pnlColor(filteredPnl)}>
+                    P&L:{" "}
+                    <b>
+                      {filteredPnl >= 0 ? "+" : ""}${filteredPnl.toFixed(2)}
+                    </b>
+                  </span>
                 </div>
               </CardContent>
             </Card>
             {!loading && closedFiltered.length === 0 && (
-              <Card><CardContent className="p-6 text-center text-muted-foreground">
-                אין פוזיציות שתואמות את הפילטר.
-              </CardContent></Card>
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  אין פוזיציות שתואמות את הפילטר.
+                </CardContent>
+              </Card>
             )}
-            {closedFiltered.map((p) => <PositionCard key={p.id} p={p} isOpen={false} />)}
+            {closedFiltered.map((p) => (
+              <PositionCard key={p.id} p={p} isOpen={false} />
+            ))}
           </TabsContent>
         </Tabs>
       </div>
@@ -663,11 +921,16 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-base flex-1">
             {p.title || p.condition_id.slice(0, 12)}
-            {p.outcome && <Badge variant="outline" className="ml-2">{p.outcome}</Badge>}
+            {p.outcome && (
+              <Badge variant="outline" className="ml-2">
+                {p.outcome}
+              </Badge>
+            )}
           </CardTitle>
           <div className="text-right shrink-0">
             <div className={`text-lg font-bold ${pnlColor(livePnlPct)}`}>
-              {livePnlPct >= 0 ? "+" : ""}{livePnlPct.toFixed(1)}%
+              {livePnlPct >= 0 ? "+" : ""}
+              {livePnlPct.toFixed(1)}%
             </div>
             <div className={`text-xs ${pnlColor(livePnlUsd)}`}>
               {livePnlUsd >= 0 ? "+" : ""}${livePnlUsd.toFixed(2)}
@@ -715,16 +978,29 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
 
         {/* Meta */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span>Size: <b className="text-foreground">${Number(p.size_usd).toFixed(0)}</b></span>
-          <span>Score: <b className="text-foreground">{Number(p.score).toFixed(0)}</b></span>
+          <span>
+            Size: <b className="text-foreground">${Number(p.size_usd).toFixed(0)}</b>
+          </span>
+          <span>
+            Score: <b className="text-foreground">{Number(p.score).toFixed(0)}</b>
+          </span>
           <span>נפתח: {fmtTime(p.opened_at)}</span>
           {isOpen ? (
-            <span>נשאר: <b className="text-foreground">{timeLeft(p.time_stop_at)}</b></span>
+            <span>
+              נשאר: <b className="text-foreground">{timeLeft(p.time_stop_at)}</b>
+            </span>
           ) : (
             <>
               <span>נסגר: {fmtTime(p.closed_at)}</span>
-              {p.resolved_outcome && <span>תוצאה רשמית: <b className="text-foreground">{p.resolved_outcome}</b></span>}
-              <Badge variant={Number(p.pnl_usd ?? 0) >= 0 ? "default" : "destructive"} className="text-xs">
+              {p.resolved_outcome && (
+                <span>
+                  תוצאה רשמית: <b className="text-foreground">{p.resolved_outcome}</b>
+                </span>
+              )}
+              <Badge
+                variant={Number(p.pnl_usd ?? 0) >= 0 ? "default" : "destructive"}
+                className="text-xs"
+              >
                 {p.exit_reason}
               </Badge>
             </>
@@ -745,7 +1021,17 @@ function PositionCard({ p, isOpen }: { p: Position; isOpen: boolean }) {
   );
 }
 
-function Field({ label, value, color, bold }: { label: string; value: string; color?: string; bold?: boolean }) {
+function Field({
+  label,
+  value,
+  color,
+  bold,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  bold?: boolean;
+}) {
   return (
     <div>
       <div className="text-muted-foreground text-[10px]">{label}</div>

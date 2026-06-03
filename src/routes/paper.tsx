@@ -77,6 +77,18 @@ function fmtTime(iso: string | null) {
   return d.toLocaleString("he-IL", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
 }
 
+function fmtDateTime(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString("he-IL", {
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function timeLeft(iso: string) {
   const ms = new Date(iso).getTime() - Date.now();
   if (ms <= 0) return "פג";
@@ -158,6 +170,8 @@ function PaperPage() {
   const [filterResult, setFilterResult] = useState<"all" | "win" | "loss">("all");
   const [pnlPage, setPnlPage] = useState(1);
   const PNL_PAGE_SIZE = 20;
+  const [tradesPage, setTradesPage] = useState(1);
+  const TRADES_PAGE_SIZE = 50;
   const [lastBotRun, setLastBotRun] = useState<string | null>(null);
   const [lastScanRun, setLastScanRun] = useState<string | null>(null);
   const loadSeq = useRef(0);
@@ -221,7 +235,17 @@ function PaperPage() {
   useEffect(() => {
     load();
     const t = setInterval(load, 30000);
-    return () => clearInterval(t);
+    const channel = supabase
+      .channel("paper_positions_dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "paper_positions" }, () => {
+        window.setTimeout(() => void load(), 250);
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(t);
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   async function runNow() {
@@ -251,6 +275,11 @@ function PaperPage() {
   const wins24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) > 0).length;
   const losses24h = last24h.filter((p) => Number(p.pnl_usd ?? 0) < 0).length;
   const winRate24h = wins24h + losses24h ? (wins24h / (wins24h + losses24h)) * 100 : 0;
+  const allTrades = [...open, ...closed].sort((a, b) => {
+    const ta = new Date(a.closed_at ?? a.opened_at).getTime();
+    const tb = new Date(b.closed_at ?? b.opened_at).getTime();
+    return tb - ta;
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -326,6 +355,7 @@ function PaperPage() {
         <Tabs defaultValue="pnl">
           <TabsList>
             <TabsTrigger value="pnl">📊 רווח והפסד</TabsTrigger>
+            <TabsTrigger value="trades">כל העסקאות ({allTrades.length})</TabsTrigger>
             <TabsTrigger value="open">פתוחות ({open.length})</TabsTrigger>
             <TabsTrigger value="closed">סגורות ({closed.length})</TabsTrigger>
           </TabsList>
@@ -335,11 +365,7 @@ function PaperPage() {
               <CardHeader className="pb-2"><CardTitle className="text-base">טבלת רווח והפסד</CardTitle></CardHeader>
               <CardContent className="p-0">
                 {(() => {
-                  const all = [...open, ...closed].sort((a, b) => {
-                    const ta = new Date(a.closed_at ?? a.opened_at).getTime();
-                    const tb = new Date(b.closed_at ?? b.opened_at).getTime();
-                    return tb - ta;
-                  });
+                  const all = allTrades;
                   const totalPages = Math.max(1, Math.ceil(all.length / PNL_PAGE_SIZE));
                   const curPage = Math.min(pnlPage, totalPages);
                   const pageItems = all.slice((curPage - 1) * PNL_PAGE_SIZE, curPage * PNL_PAGE_SIZE);
@@ -456,6 +482,90 @@ function PaperPage() {
                           <Button size="sm" variant="outline" disabled={curPage <= 1} onClick={() => setPnlPage(curPage - 1)}>הקודם</Button>
                           <span className="text-xs text-muted-foreground">עמוד {curPage} מתוך {totalPages}</span>
                           <Button size="sm" variant="outline" disabled={curPage >= totalPages} onClick={() => setPnlPage(curPage + 1)}>הבא</Button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="trades">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">תיעוד כל הקניות והמכירות</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {(() => {
+                  const totalPages = Math.max(1, Math.ceil(allTrades.length / TRADES_PAGE_SIZE));
+                  const curPage = Math.min(tradesPage, totalPages);
+                  const pageItems = allTrades.slice((curPage - 1) * TRADES_PAGE_SIZE, curPage * TRADES_PAGE_SIZE);
+                  return (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1100px] text-sm">
+                          <thead className="bg-muted/50 text-xs text-muted-foreground">
+                            <tr>
+                              <th className="text-right p-2">שוק</th>
+                              <th className="text-center p-2">סטטוס</th>
+                              <th className="text-center p-2">זמן קנייה</th>
+                              <th className="text-center p-2">מחיר קנייה</th>
+                              <th className="text-center p-2">סכום</th>
+                              <th className="text-center p-2">כמות</th>
+                              <th className="text-center p-2">זמן מכירה</th>
+                              <th className="text-center p-2">מחיר מכירה/נוכחי</th>
+                              <th className="text-center p-2">שווי יציאה</th>
+                              <th className="text-center p-2">P&L</th>
+                              <th className="text-center p-2">סיבת יציאה</th>
+                              <th className="text-center p-2">קישור</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allTrades.length === 0 && (
+                              <tr><td colSpan={12} className="p-4 text-center text-muted-foreground">אין עסקאות עדיין</td></tr>
+                            )}
+                            {pageItems.map((p) => {
+                              const isOpen = p.status === "OPEN";
+                              const exitOrCurrent = isOpen ? (p.current_price ?? p.entry_price) : (p.exit_price ?? p.entry_price);
+                              const exitValue = Number(exitOrCurrent) * Number(p.shares);
+                              const pnlUsd = isOpen
+                                ? (Number(exitOrCurrent) - Number(p.entry_price)) * Number(p.shares)
+                                : Number(p.pnl_usd ?? 0);
+                              return (
+                                <tr key={p.id} className="border-t">
+                                  <td className="p-2 text-right max-w-[320px]">
+                                    <div className="truncate font-medium">{p.title || p.condition_id.slice(0, 12)}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{p.outcome || "—"}</div>
+                                  </td>
+                                  <td className="p-2 text-center"><Badge variant={isOpen ? "default" : "outline"} className="text-xs">{isOpen ? "פתוחה" : "סגורה"}</Badge></td>
+                                  <td className="p-2 text-center whitespace-nowrap">{fmtDateTime(p.opened_at)}</td>
+                                  <td className="p-2 text-center">{Number(p.entry_price).toFixed(3)}</td>
+                                  <td className="p-2 text-center">${Number(p.size_usd).toFixed(2)}</td>
+                                  <td className="p-2 text-center">{Number(p.shares).toFixed(2)}</td>
+                                  <td className="p-2 text-center whitespace-nowrap">{fmtDateTime(p.closed_at)}</td>
+                                  <td className="p-2 text-center">{Number(exitOrCurrent).toFixed(3)}</td>
+                                  <td className="p-2 text-center">${exitValue.toFixed(2)}</td>
+                                  <td className={`p-2 text-center font-medium ${pnlColor(pnlUsd)}`}>{pnlUsd >= 0 ? "+" : ""}${pnlUsd.toFixed(2)}</td>
+                                  <td className="p-2 text-center text-xs text-muted-foreground">{isOpen ? "עדיין פתוחה" : (p.exit_reason || "—")}</td>
+                                  <td className="p-2 text-center">
+                                    {p.condition_id && (
+                                      <a href={marketUrl(p)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center text-primary hover:underline">
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                      </a>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      {allTrades.length > TRADES_PAGE_SIZE && (
+                        <div className="flex items-center justify-center gap-2 p-3 border-t">
+                          <Button size="sm" variant="outline" disabled={curPage <= 1} onClick={() => setTradesPage(curPage - 1)}>הקודם</Button>
+                          <span className="text-xs text-muted-foreground">עמוד {curPage} מתוך {totalPages}</span>
+                          <Button size="sm" variant="outline" disabled={curPage >= totalPages} onClick={() => setTradesPage(curPage + 1)}>הבא</Button>
                         </div>
                       )}
                     </>

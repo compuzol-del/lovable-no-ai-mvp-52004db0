@@ -15,6 +15,7 @@ import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as RealRouteImport } from './routes/real'
 import { Route as PaperRouteImport } from './routes/paper'
 import { Route as LogicRouteImport } from './routes/logic'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicHooksScanWalletsRouteImport } from './routes/api/public/hooks/scan-wallets'
 import { Route as ApiPublicHooksRefreshWhalePerformanceRouteImport } from './routes/api/public/hooks/refresh-whale-performance'
@@ -52,6 +53,11 @@ const PaperRoute = PaperRouteImport.update({
 const LogicRoute = LogicRouteImport.update({
   id: '/logic',
   path: '/logic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -104,6 +110,7 @@ const ApiPublicHooksComputeSignalsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
   '/real': typeof RealRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
   '/real': typeof RealRoute
@@ -137,6 +145,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/logic': typeof LogicRoute
   '/paper': typeof PaperRoute
   '/real': typeof RealRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dashboard'
     | '/logic'
     | '/paper'
     | '/real'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dashboard'
     | '/logic'
     | '/paper'
     | '/real'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/dashboard'
     | '/logic'
     | '/paper'
     | '/real'
@@ -204,6 +216,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
   LogicRoute: typeof LogicRoute
   PaperRoute: typeof PaperRoute
   RealRoute: typeof RealRoute
@@ -261,6 +274,13 @@ declare module '@tanstack/react-router' {
       path: '/logic'
       fullPath: '/logic'
       preLoaderRoute: typeof LogicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -324,6 +344,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
   LogicRoute: LogicRoute,
   PaperRoute: PaperRoute,
   RealRoute: RealRoute,
